@@ -1,0 +1,54 @@
+{
+    "delivery_orders": [
+        {
+            "truck_id": "T1",
+            "material": "M1",
+            "quantity": 10,
+            "duration": 20,
+            "start_time": 0,
+            "exchange_point": "P2"
+        },
+        {
+            "truck_id": "T3",
+            "material": "M1",
+            "quantity": 30,
+            "duration": 10,
+            "start_time": 0,
+            "exchange_point": "P1"
+        },
+        {
+            "truck_id": "T3",
+            "material": "M3",
+            "quantity": 20,
+            "duration": 15,
+            "start_time": 84,
+            "exchange_point": "P3"
+        }
+    ],
+    "pickup_orders": [
+        {
+            "truck_id": "T1",
+            "material": "M2",
+            "quantity": 20,
+            "duration": 15,
+            "start_time": 67,
+            "exchange_point": "P3"
+        },
+        {
+            "truck_id": "T2",
+            "material": "M2",
+            "quantity": 20,
+            "duration": 25,
+            "start_time": 30,
+            "exchange_point": "P3"
+        },
+        {
+            "truck_id": "T2",
+            "material": "M3",
+            "quantity": 10,
+            "duration": 30,
+            "start_time": 0,
+            "exchange_point": "P3"
+        }
+    ]
+}

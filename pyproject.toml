@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logistics"
+version = "0.1.0"
+dependencies = [
+    "ortools",
+    "dataclasses-json",
+    "flask",
+    "waitress"
+]

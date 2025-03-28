@@ -1,0 +1,126 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "warehouse": {
+            "type": "array",
+            "description": "List of materials stored in the warehouse, including stock levels and exchange points.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "material": {
+                        "type": "string",
+                        "description": "Unique identifier for the material."
+                    },
+                    "stock_level": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Current quantity of the material available in storage."
+                    },
+                    "stock_capacity": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Maximum capacity of the warehouse for this material."
+                    },
+                    "exchange_points": {
+                        "type": "array",
+                        "description": "List of exchange points where the material can be picked up or delivered.",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "material",
+                    "stock_level",
+                    "stock_capacity",
+                    "exchange_points"
+                ]
+            }
+        },
+        "trucks": {
+            "type": "array",
+            "description": "List of trucks with their waiting times and delivery and pickup orders.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Unique identifier for the truck."
+                    },
+                    "waiting_time": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Time (in minutes) the truck has been waiting in the yard."
+                    },
+                    "delivery_orders": {
+                        "type": "array",
+                        "description": "List of delivery orders assigned to the truck.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "material": {
+                                    "type": "string",
+                                    "description": "Identifier of the material being delivered."
+                                },
+                                "quantity": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Amount of material being delivered."
+                                },
+                                "duration": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Time (in minutes) required to complete the delivery."
+                                }
+                            },
+                            "required": [
+                                "material",
+                                "quantity",
+                                "duration"
+                            ]
+                        }
+                    },
+                    "pickup_orders": {
+                        "type": "array",
+                        "description": "List of pickup orders assigned to the truck.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "material": {
+                                    "type": "string",
+                                    "description": "Identifier of the material being picked up."
+                                },
+                                "quantity": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Amount of material being picked up."
+                                },
+                                "duration": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "description": "Time (in minutes) required to complete the pickup."
+                                }
+                            },
+                            "required": [
+                                "material",
+                                "quantity",
+                                "duration"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "waiting_time",
+                    "delivery_orders",
+                    "pickup_orders"
+                ]
+            }
+        }
+    },
+    "required": [
+        "warehouse",
+        "trucks"
+    ]
+}

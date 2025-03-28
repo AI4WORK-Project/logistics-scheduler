@@ -1,0 +1,85 @@
+{
+    "warehouse": [
+        {
+            "material": "M1", // Unique identifier for the material
+            "stock_level": 20, // Current quantity available
+            "stock_capacity": 100, // Maximum storage capacity for this material
+            "exchange_points": [ // List of exchange points (pickup and delivery locations)
+                "P1",
+                "P2"
+            ]
+        },
+        {
+            "material": "M2",
+            "stock_level": 50,
+            "stock_capacity": 80,
+            "exchange_points": [
+                "P1",
+                "P3"
+            ]
+        },
+        {
+            "material": "M3",
+            "stock_level": 30,
+            "stock_capacity": 120,
+            "exchange_points": [
+                "P2",
+                "P3"
+            ]
+        }
+    ],
+    "trucks": [ // List of trucks currently in the yard
+        {
+            "id": "T1", // Unique identifier for the truck
+            "waiting_time": 60, // Time (in minutes) the truck has been waiting
+            "delivery_orders": [ // List of materials this truck has to deliver
+                {
+                    "material": "M1", // Identifier for the material to be delivered
+                    "quantity": 10, // Amount of material being delivered
+                    "duration": 20 // Duration in minutes for completing the order
+                }
+            ],
+            "pickup_orders": [ // List of materials this truck has to pick up
+                {
+                    "material": "M2",
+                    "quantity": 20,
+                    "duration": 15
+                }
+            ]
+        },
+        {
+            "id": "T2",
+            "waiting_time": 10,
+            "delivery_orders": [],
+            "pickup_orders": [
+                {
+                    "material": "M2",
+                    "quantity": 20,
+                    "duration": 25
+                },
+                {
+                    "material": "M3",
+                    "quantity": 10,
+                    "duration": 30
+                }
+            ]
+        },
+        {
+            "id": "T3",
+            "waiting_time": 20,
+            "delivery_orders": [
+                {
+                    "material": "M1",
+                    "quantity": 30,
+                    "duration": 10
+                },
+                {
+                    "material": "M3",
+                    "quantity": 20,
+                    "duration": 15
+                }
+            ],
+            "pickup_orders": []
+        }
+    ]
+}
