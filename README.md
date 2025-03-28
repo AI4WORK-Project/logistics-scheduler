@@ -1,2 +1,2 @@
-# logistic-scheduler
-logistic-scheduler
+# logistics-scheduler
+logistics-scheduler
