@@ -12,7 +12,7 @@ def schedule():
     try:
         logging.info("Request received!")
 
-        instance: LogisticsInstance = LogisticsInstance.from_json(request.json)
+        instance: LogisticsInstance = LogisticsInstance.from_dict(request.json)
 
         factory = LogisticsSchedulingFactory(instance)
 
