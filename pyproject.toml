@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "logistics"
 version = "0.1.0"
 dependencies = [
-    "ortools",
-    "dataclasses-json",
-    "flask",
-    "waitress"
+    "ortools==9.12.4544",
+    "dataclasses-json==0.6.7",
+    "flask==3.1.0",
+    "waitress==3.0.2"
 ]
