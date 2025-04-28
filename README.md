@@ -48,3 +48,8 @@ python client_example.py
 ```
 
 This script sends a request to the running server and prints the response.
+
+Alternatively, you can use `curl`:
+```sh
+curl -X POST --json @examples/instances/instance2.json "http://0.0.0.0:5000/schedule?time_limit=60"
+```
