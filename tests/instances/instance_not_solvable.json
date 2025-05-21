@@ -1,0 +1,26 @@
+{
+    "warehouse": [
+        {
+            "material": "M1",
+            "stock_level": 20,
+            "stock_capacity": 100,
+            "exchange_points": [
+                "P1"
+            ]
+        }
+    ],
+    "trucks": [
+        {
+            "id": "T1",
+            "waiting_time": 60,
+            "delivery_orders": [
+                {
+                    "material": "M1",
+                    "quantity": 999999,
+                    "duration": 20
+                }
+            ],
+            "pickup_orders": []
+        }
+    ]
+}
