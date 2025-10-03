@@ -5,7 +5,7 @@ from typing import List
 
 @dataclass_json
 @dataclass
-class Material:
+class MaterialSite:
     material: str
     stock_level: int
     stock_capacity: int
@@ -55,19 +55,21 @@ class Truck:
 @dataclass_json
 @dataclass
 class LogisticsInstance:
-    warehouse: List[Material]
+    warehouse: List[MaterialSite]
     trucks: List[Truck]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        materials = set(material.material for material in self.warehouse)
+        materials = set(material_site.material for material_site in self.warehouse)
         trucks = set(truck.id for truck in self.trucks)
 
-        assert len(materials) == len(
-            self.warehouse
-        ), "Duplicate materials found in warehouse"
+        for material_site in self.warehouse:
+            assert len(material_site.exchange_points) == len(
+                set(material_site.exchange_points)
+            ), "Exchange points must be unique for each material site"
+
         assert len(trucks) == len(self.trucks), "Duplicate trucks found"
 
         for truck in self.trucks:

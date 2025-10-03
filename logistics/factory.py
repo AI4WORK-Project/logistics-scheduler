@@ -1,7 +1,7 @@
 import collections
 from typing import List, Dict, Optional
 from ortools.sat.python import cp_model
-from .instance import LogisticsInstance, DeliveryPickupOrder
+from .instance import LogisticsInstance, DeliveryPickupOrder, MaterialSite
 from .solution import LogisticsSolution, ScheduledOrder
 
 
@@ -14,9 +14,14 @@ class LogisticsSchedulingFactory:
 
     def __init__(self, instance: LogisticsInstance):
         self.instance = instance
-        self.materials = dict(map(lambda m: (m.material, m), self.instance.warehouse))
+
+        self.warehouse: Dict[str, List[MaterialSite]] = {
+            material_site.material: [] for material_site in self.instance.warehouse
+        }
+        for material_site in self.instance.warehouse:
+            self.warehouse[material_site.material].append(material_site)
         self.exchange_points = set(
-            p for m in self.materials.values() for p in m.exchange_points
+            p for m in self.instance.warehouse for p in m.exchange_points
         )
         self.upper_bound = self.calculate_upper_bound()
         self.delivery_activities: List[optional_activity_type] = []
@@ -54,22 +59,24 @@ class LogisticsSchedulingFactory:
         orders: List[DeliveryPickupOrder],
         truck_id: str,
         prefix: str,
-    ):
+    ) -> List[optional_activity_type]:
         activities = []
         for order in orders:
             order_activities = []
-            for exchange_point in self.materials[order.material].exchange_points:
-                activity = self.add_optional_activity(
-                    model,
-                    f"{prefix}_{truck_id}_{order.material}_{exchange_point}",
-                    order.duration,
-                    params={
-                        "truck_id": truck_id,
-                        "exchange_point": exchange_point,
-                        "order": order,
-                    },
-                )
-                order_activities.append(activity)
+            for s, material_site in enumerate(self.warehouse[order.material]):
+                for exchange_point in material_site.exchange_points:
+                    activity = self.add_optional_activity(
+                        model,
+                        f"{prefix}_{truck_id}_{order.material}_{exchange_point}_s{s}",
+                        order.duration,
+                        params={
+                            "truck_id": truck_id,
+                            "exchange_point": exchange_point,
+                            "material_site": material_site,
+                            "order": order,
+                        },
+                    )
+                    order_activities.append(activity)
             model.add_exactly_one(map(lambda a: a.is_present, order_activities))
             activities += order_activities
         return activities
@@ -105,16 +112,16 @@ class LogisticsSchedulingFactory:
             )
 
     def enforce_stock_constraints(self, model: cp_model.CpModel):
-        for material in self.instance.warehouse:
+        for material_site in self.instance.warehouse:
             delivery_activities = list(
                 filter(
-                    lambda act: act.params["order"].material == material.material,
+                    lambda act: act.params["material_site"] == material_site,
                     self.delivery_activities,
                 )
             )
             pickup_activities = list(
                 filter(
-                    lambda act: act.params["order"].material == material.material,
+                    lambda act: act.params["material_site"] == material_site,
                     self.pickup_activities,
                 )
             )
@@ -126,7 +133,7 @@ class LogisticsSchedulingFactory:
                 )
             )
             level_changes = (
-                [material.stock_level]
+                [material_site.stock_level]
                 + list(
                     map(lambda act: act.params["order"].quantity, delivery_activities)
                 )
@@ -143,7 +150,7 @@ class LogisticsSchedulingFactory:
                 level_changes,
                 actives,
                 min_level=0,
-                max_level=material.stock_capacity,
+                max_level=material_site.stock_capacity,
             )
 
     def add_quality_metric(self, model: cp_model.CpModel):
@@ -203,6 +210,7 @@ class LogisticsSchedulingFactory:
         solver = cp_model.CpSolver()
         if time_limit is not None:
             solver.parameters.max_time_in_seconds = time_limit
+        # solver.parameters.log_search_progress = True
 
         status = solver.solve(self.model)
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:

@@ -26,6 +26,14 @@
                 "P2",
                 "P3"
             ]
+        },
+        {
+            "material": "M3",
+            "stock_level": 50,
+            "stock_capacity": 80,
+            "exchange_points": [
+                "P1"
+            ]
         }
     ],
     "trucks": [
