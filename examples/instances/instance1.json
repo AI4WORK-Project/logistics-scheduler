@@ -1,38 +1,48 @@
 {
     "warehouse": [
         {
-            "material": "M1",
-            "stock_level": 20,
-            "stock_capacity": 100,
-            "exchange_points": [
-                "P1",
-                "P2"
+            "exchange_point": "P1",
+            "materials": [
+                {
+                    "material": "M1",
+                    "stock_level": 20,
+                    "stock_capacity": 100
+                },
+                {
+                    "material": "M2",
+                    "stock_level": 50,
+                    "stock_capacity": 80
+                }
             ]
         },
         {
-            "material": "M2",
-            "stock_level": 50,
-            "stock_capacity": 80,
-            "exchange_points": [
-                "P1",
-                "P3"
+            "exchange_point": "P2",
+            "materials": [
+                {
+                    "material": "M1",
+                    "stock_level": 40,
+                    "stock_capacity": 70
+                },
+                {
+                    "material": "M3",
+                    "stock_level": 30,
+                    "stock_capacity": 120
+                }
             ]
         },
         {
-            "material": "M3",
-            "stock_level": 30,
-            "stock_capacity": 120,
-            "exchange_points": [
-                "P2",
-                "P3"
-            ]
-        },
-        {
-            "material": "M3",
-            "stock_level": 50,
-            "stock_capacity": 80,
-            "exchange_points": [
-                "P1"
+            "exchange_point": "P3",
+            "materials": [
+                {
+                    "material": "M2",
+                    "stock_level": 25,
+                    "stock_capacity": 90
+                },
+                {
+                    "material": "M3",
+                    "stock_level": 30,
+                    "stock_capacity": 120
+                }
             ]
         }
     ],
@@ -40,54 +50,84 @@
         {
             "id": "T1",
             "waiting_time": 60,
-            "delivery_orders": [
-                {
-                    "material": "M1",
-                    "quantity": 10,
-                    "duration": 20
-                }
-            ],
-            "pickup_orders": [
-                {
-                    "material": "M2",
-                    "quantity": 20,
-                    "duration": 15
-                }
-            ]
+            "order": {
+                "is_delivery": true,
+                "material": "M1",
+                "quantity": 10,
+                "duration": 20,
+                "exchange_point": "P1"
+            }
         },
         {
             "id": "T2",
             "waiting_time": 10,
-            "delivery_orders": [],
-            "pickup_orders": [
-                {
-                    "material": "M2",
-                    "quantity": 20,
-                    "duration": 25
-                },
-                {
-                    "material": "M3",
-                    "quantity": 10,
-                    "duration": 30
-                }
-            ]
+            "order": {
+                "is_delivery": false,
+                "material": "M2",
+                "quantity": 20,
+                "duration": 15
+            }
         },
         {
             "id": "T3",
+            "waiting_time": 30,
+            "order": {
+                "is_delivery": false,
+                "material": "M2",
+                "quantity": 20,
+                "duration": 25,
+                "exchange_point": "P1"
+            }
+        },
+        {
+            "id": "T4",
+            "waiting_time": 40,
+            "order": {
+                "is_delivery": false,
+                "material": "M3",
+                "quantity": 10,
+                "duration": 30
+            }
+        },
+        {
+            "id": "T5",
+            "waiting_time": 50,
+            "order": {
+                "is_delivery": true,
+                "material": "M1",
+                "quantity": 30,
+                "duration": 10
+            }
+        },
+        {
+            "id": "T6",
+            "waiting_time": 60,
+            "order": {
+                "is_delivery": true,
+                "material": "M3",
+                "quantity": 20,
+                "duration": 15
+            }
+        },
+        {
+            "id": "T7",
+            "waiting_time": 10,
+            "order": {
+                "is_delivery": true,
+                "material": "M1",
+                "quantity": 10,
+                "duration": 20
+            }
+        },
+        {
+            "id": "T8",
             "waiting_time": 20,
-            "delivery_orders": [
-                {
-                    "material": "M1",
-                    "quantity": 30,
-                    "duration": 10
-                },
-                {
-                    "material": "M3",
-                    "quantity": 20,
-                    "duration": 15
-                }
-            ],
-            "pickup_orders": []
+            "order": {
+                "is_delivery": false,
+                "material": "M2",
+                "quantity": 20,
+                "duration": 30
+            }
         }
     ]
 }

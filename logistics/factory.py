@@ -1,8 +1,18 @@
 import collections
-from typing import List, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Iterator
 from ortools.sat.python import cp_model
-from .instance import LogisticsInstance, DeliveryPickupOrder, MaterialSite
-from .solution import LogisticsSolution, ScheduledOrder
+from .instance import (
+    LogisticsInstance,
+    DeliveryPickupOrder,
+    ExchangePoint,
+    MaterialSite,
+)
+from .solution import (
+    TruckScheduleSolution,
+    ScheduledOrder,
+    LogisticsSolution,
+    TruckExchangePoint,
+)
 
 
 optional_activity_type = collections.namedtuple(
@@ -15,28 +25,36 @@ class LogisticsSchedulingFactory:
     def __init__(self, instance: LogisticsInstance):
         self.instance = instance
 
-        self.warehouse: Dict[str, List[MaterialSite]] = {
-            material_site.material: [] for material_site in self.instance.warehouse
-        }
-        for material_site in self.instance.warehouse:
-            self.warehouse[material_site.material].append(material_site)
-        self.exchange_points = set(
-            p for m in self.instance.warehouse for p in m.exchange_points
-        )
+        self.material_to_exchange_point: Dict[str, List[ExchangePoint]] = {}
+        for ep in self.instance.warehouse:
+            for m in ep.materials:
+                if m.material not in self.material_to_exchange_point:
+                    self.material_to_exchange_point[m.material] = []
+                self.material_to_exchange_point[m.material].append(ep.exchange_point)
+
+        self.material_sites: Dict[Tuple[str, str], MaterialSite] = {}
+        for ep in self.instance.warehouse:
+            for m in ep.materials:
+                self.material_sites[(ep.exchange_point, m.material)] = m
+
         self.upper_bound = self.calculate_upper_bound()
         self.delivery_activities: List[optional_activity_type] = []
         self.pickup_activities: List[optional_activity_type] = []
-        self.model = self.get_optimization_model()
+        self.model, self.activities = self.get_optimization_model()
+        self.truck_schedule_solution = None
 
     def calculate_upper_bound(self) -> int:
         upper_bound = 0
         for truck in self.instance.trucks:
-            for order in truck.delivery_orders + truck.pickup_orders:
-                upper_bound += order.duration
+            upper_bound += truck.order.duration
         return upper_bound
 
     def add_optional_activity(
-        self, model: cp_model.CpModel, name, duration, params=None
+        self,
+        model: cp_model.CpModel,
+        name: str,
+        duration: int,
+        params: Optional[Dict] = None,
     ) -> optional_activity_type:
         """Add an optional activity to the model."""
 
@@ -53,98 +71,67 @@ class LogisticsSchedulingFactory:
             params=params,
         )
 
-    def add_delivery_pickup_activities(
-        self,
-        model: cp_model.CpModel,
-        orders: List[DeliveryPickupOrder],
-        truck_id: str,
-        prefix: str,
+    def add_delivery_pickup_activity(
+        self, model: cp_model.CpModel, order: DeliveryPickupOrder, truck_id: str
     ) -> List[optional_activity_type]:
+        prefix = "delivery" if order.is_delivery else "pickup"
         activities = []
-        for order in orders:
-            order_activities = []
-            for s, material_site in enumerate(self.warehouse[order.material]):
-                for exchange_point in material_site.exchange_points:
-                    activity = self.add_optional_activity(
-                        model,
-                        f"{prefix}_{truck_id}_{order.material}_{exchange_point}_s{s}",
-                        order.duration,
-                        params={
-                            "truck_id": truck_id,
-                            "exchange_point": exchange_point,
-                            "material_site": material_site,
-                            "order": order,
-                        },
-                    )
-                    order_activities.append(activity)
-            model.add_exactly_one(map(lambda a: a.is_present, order_activities))
-            activities += order_activities
+
+        exchange_points = (
+            [order.exchange_point]
+            if order.exchange_point is not None
+            else self.material_to_exchange_point[order.material]
+        )
+        for exchange_point in exchange_points:
+            activity = self.add_optional_activity(
+                model,
+                f"{prefix}_{truck_id}_{order.material}_{exchange_point}",
+                order.duration,
+                params={
+                    "truck_id": truck_id,
+                    "exchange_point": exchange_point,
+                    "order": order,
+                },
+            )
+            activities.append(activity)
+        model.add_exactly_one(map(lambda a: a.is_present, activities))
+
         return activities
 
-    def enforce_delivery_before_pickup(
-        self, model: cp_model.CpModel, delivery_activities, pickup_activities, truck_id
+    def enforce_exchange_point_constraints(
+        self, model: cp_model.CpModel, activities: List[optional_activity_type]
     ):
-        if len(delivery_activities) == 0 or len(pickup_activities) == 0:
-            return
+        exchange_point_activities = {}
+        for act in activities:
+            exchange_point = act.params["exchange_point"]
+            if exchange_point not in exchange_point_activities:
+                exchange_point_activities[exchange_point] = []
+            exchange_point_activities[exchange_point].append(act)
 
-        delivery_end = model.new_int_var(
-            0, self.upper_bound, f"delivery_end_{truck_id}"
-        )
-        pickup_start = model.new_int_var(
-            0, self.upper_bound, f"pickup_start_{truck_id}"
-        )
-        model.add_min_equality(
-            pickup_start, map(lambda act: act.start, pickup_activities)
-        )
-        model.add_max_equality(
-            delivery_end, map(lambda act: act.start + act.duration, delivery_activities)
-        )
-        model.add(pickup_start >= delivery_end)
+        for activities in exchange_point_activities.values():
+            model.add_no_overlap(map(lambda act: act.interval, activities))
 
-    def enforce_exchange_point_constraints(self, model: cp_model.CpModel):
-        activities = self.delivery_activities + self.pickup_activities
-        for exchange_point in self.exchange_points:
-            exchange_point_activities = filter(
-                lambda act: act.params["exchange_point"] == exchange_point, activities
-            )
-            model.add_no_overlap(
-                map(lambda act: act.interval, exchange_point_activities)
-            )
+    def enforce_stock_constraints(
+        self, model: cp_model.CpModel, activities: List[optional_activity_type]
+    ):
+        material_site_activities = {}
+        for act in activities:
+            material_site = (act.params["exchange_point"], act.params["order"].material)
+            if material_site not in material_site_activities:
+                material_site_activities[material_site] = []
+            material_site_activities[material_site].append(act)
 
-    def enforce_stock_constraints(self, model: cp_model.CpModel):
-        for material_site in self.instance.warehouse:
-            delivery_activities = list(
-                filter(
-                    lambda act: act.params["material_site"] == material_site,
-                    self.delivery_activities,
+        for material_site, activities in material_site_activities.items():
+            material_site = self.material_sites[material_site]
+            times = [0] + list(map(lambda act: act.start + act.duration, activities))
+            level_changes = [material_site.stock_level] + [
+                (
+                    act.params["order"].quantity
+                    * (1 if act.params["order"].is_delivery else -1)
                 )
-            )
-            pickup_activities = list(
-                filter(
-                    lambda act: act.params["material_site"] == material_site,
-                    self.pickup_activities,
-                )
-            )
-
-            times = [0] + list(
-                map(
-                    lambda act: act.start + act.duration,
-                    delivery_activities + pickup_activities,
-                )
-            )
-            level_changes = (
-                [material_site.stock_level]
-                + list(
-                    map(lambda act: act.params["order"].quantity, delivery_activities)
-                )
-                + list(
-                    map(lambda act: -act.params["order"].quantity, pickup_activities)
-                )
-            )
-
-            actives = [True] + list(
-                map(lambda act: act.is_present, delivery_activities + pickup_activities)
-            )
+                for act in activities
+            ]
+            actives = [True] + list(map(lambda act: act.is_present, activities))
             model.add_reservoir_constraint_with_active(
                 times,
                 level_changes,
@@ -153,15 +140,16 @@ class LogisticsSchedulingFactory:
                 max_level=material_site.stock_capacity,
             )
 
-    def add_quality_metric(self, model: cp_model.CpModel):
+    def add_quality_metric(
+        self, model: cp_model.CpModel, activities: List[optional_activity_type]
+    ):
         """Sets the objective of the model to minimize."""
 
-        makespan_var = model.new_int_var(0, self.upper_bound, "makespan")
-        activities = self.delivery_activities + self.pickup_activities
-        model.add_max_equality(
-            makespan_var,
-            [activity.start + activity.duration for activity in activities],
-        )
+        # makespan_var = model.new_int_var(0, self.upper_bound, "makespan")
+        # model.add_max_equality(
+        #     makespan_var,
+        #     [activity.start + activity.duration for activity in activities],
+        # )
 
         truck_makespan_vars = []
         for truck in self.instance.trucks:
@@ -180,33 +168,27 @@ class LogisticsSchedulingFactory:
         # model.minimize(10 * makespan_var + sum(truck_makespan_vars))
         model.minimize(sum(truck_makespan_vars))
 
-    def get_optimization_model(self) -> cp_model.CpModel:
+    def get_optimization_model(
+        self,
+    ) -> Tuple[cp_model.CpModel, List[optional_activity_type]]:
         model = cp_model.CpModel()
+        activities = []
         for truck in self.instance.trucks:
-            delivery_activities = self.add_delivery_pickup_activities(
-                model, truck.delivery_orders, truck.id, "delivery"
+            truck_activities = self.add_delivery_pickup_activity(
+                model, truck.order, truck.id
             )
-            pickup_activities = self.add_delivery_pickup_activities(
-                model, truck.pickup_orders, truck.id, "pickup"
-            )
-            model.add_no_overlap(
-                map(lambda a: a.interval, delivery_activities + pickup_activities)
-            )
-            self.enforce_delivery_before_pickup(
-                model, delivery_activities, pickup_activities, truck.id
-            )
-            self.delivery_activities += delivery_activities
-            self.pickup_activities += pickup_activities
+            activities += truck_activities
 
-        self.enforce_exchange_point_constraints(model)
-        self.enforce_stock_constraints(model)
-        self.add_quality_metric(model)
+        self.enforce_exchange_point_constraints(model, activities)
+        self.enforce_stock_constraints(model, activities)
+        self.add_quality_metric(model, activities)
 
-        return model
+        return model, activities
 
     def get_solution(
         self, time_limit: Optional[int] = None
     ) -> Optional[LogisticsSolution]:
+        self.truck_schedule_solution = None
         solver = cp_model.CpSolver()
         if time_limit is not None:
             solver.parameters.max_time_in_seconds = time_limit
@@ -215,13 +197,15 @@ class LogisticsSchedulingFactory:
         status = solver.solve(self.model)
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
 
-            def construct_scheduled_orders(activities):
+            def construct_scheduled_orders(
+                activities: Iterator[optional_activity_type],
+            ) -> List[ScheduledOrder]:
                 scheduled_orders = []
                 for activity in activities:
                     if solver.value(activity.is_present):
                         truck_id = activity.params["truck_id"]
                         exchange_point = activity.params["exchange_point"]
-                        order: ScheduledOrder = activity.params["order"]
+                        order: DeliveryPickupOrder = activity.params["order"]
                         scheduled_order = ScheduledOrder(
                             truck_id,
                             order.material,
@@ -233,9 +217,24 @@ class LogisticsSchedulingFactory:
                         scheduled_orders.append(scheduled_order)
                 return scheduled_orders
 
-            delivery_orders = construct_scheduled_orders(self.delivery_activities)
-            pickup_orders = construct_scheduled_orders(self.pickup_activities)
-            return LogisticsSolution(delivery_orders, pickup_orders)
+            delivery_orders = construct_scheduled_orders(
+                filter(lambda act: act.params["order"].is_delivery, self.activities)
+            )
+            pickup_orders = construct_scheduled_orders(
+                filter(lambda act: not act.params["order"].is_delivery, self.activities)
+            )
+            self.truck_schedule_solution = TruckScheduleSolution(
+                delivery_orders, pickup_orders
+            )
+
+            truck_entrance_order = list(
+                map(
+                    lambda o: TruckExchangePoint(o.truck_id, o.exchange_point),
+                    sorted(delivery_orders + pickup_orders, key=lambda o: o.start_time),
+                )
+            )
+
+            return LogisticsSolution(truck_entrance_order)
 
         else:
             return None

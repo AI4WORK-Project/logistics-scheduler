@@ -1,6 +1,37 @@
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from typing import List
+from typing import List, Optional
+
+
+@dataclass_json
+@dataclass
+class DeliveryPickupOrder:
+    is_delivery: bool
+    material: str
+    quantity: int
+    duration: int
+    exchange_point: Optional[str] = None
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        assert self.quantity > 0, "Order quantity must be positive."
+        assert self.duration > 0, "Order duration must be positive."
+
+
+@dataclass_json
+@dataclass
+class Truck:
+    id: str
+    waiting_time: int
+    order: DeliveryPickupOrder
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        assert self.waiting_time >= 0, "Truck waiting time cannot be negative."
 
 
 @dataclass_json
@@ -9,71 +40,71 @@ class MaterialSite:
     material: str
     stock_level: int
     stock_capacity: int
-    exchange_points: List[str]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        assert self.stock_level >= 0, "Stock level cannot be negative"
-        assert self.stock_capacity >= 0, "Stock capacity cannot be negative"
+        assert self.stock_level >= 0, "Stock level cannot be negative."
+        assert self.stock_capacity >= 0, "Stock capacity cannot be negative."
         assert (
             self.stock_capacity >= self.stock_level
-        ), "Stock level cannot be greater than stock capacity"
+        ), "Stock level cannot be greater than stock capacity."
 
 
 @dataclass_json
 @dataclass
-class DeliveryPickupOrder:
-    material: str
-    quantity: int
-    duration: int
+class ExchangePoint:
+    exchange_point: str
+    materials: List[MaterialSite]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        assert self.quantity > 0, "Quantity must be positive"
-        assert self.duration > 0, "Duration must be positive"
-
-
-@dataclass_json
-@dataclass
-class Truck:
-    id: str
-    waiting_time: int
-    delivery_orders: List[DeliveryPickupOrder]
-    pickup_orders: List[DeliveryPickupOrder]
-
-    def __post_init__(self):
-        self.validate()
-
-    def validate(self):
-        assert self.waiting_time >= 0, "Waiting time cannot be negative"
+        assert len(set(m.material for m in self.materials)) == len(
+            self.materials
+        ), f"Duplicate materials found in exchange point '{self.exchange_point}'."
 
 
 @dataclass_json
 @dataclass
 class LogisticsInstance:
-    warehouse: List[MaterialSite]
+    warehouse: List[ExchangePoint]
     trucks: List[Truck]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        materials = set(material_site.material for material_site in self.warehouse)
-        trucks = set(truck.id for truck in self.trucks)
+        exchange_points = set(ep.exchange_point for ep in self.warehouse)
+        assert len(exchange_points) == len(
+            self.warehouse
+        ), "Duplicate exchange points found."
 
-        for material_site in self.warehouse:
-            assert len(material_site.exchange_points) == len(
-                set(material_site.exchange_points)
-            ), "Exchange points must be unique for each material site"
+        assert len(set(t.id for t in self.trucks)) == len(
+            self.trucks
+        ), "Duplicate trucks found."
 
-        assert len(trucks) == len(self.trucks), "Duplicate trucks found"
+        materials = set(m.material for ep in self.warehouse for m in ep.materials)
+        for t in self.trucks:
+            assert (
+                t.order.material in materials
+            ), f"Truck '{t.id}' has an order with material '{t.order.material}', but this material does not exist in the warehouse."
 
-        for truck in self.trucks:
-            for order in truck.delivery_orders + truck.pickup_orders:
+        exchange_point_to_materials = {}
+        for ep in self.warehouse:
+            exchange_point_to_materials[ep.exchange_point] = set(
+                m.material for m in ep.materials
+            )
+
+        for t in self.trucks:
+            if t.order.exchange_point is not None:
                 assert (
-                    order.material in materials
-                ), f"Material {order.material} not found in warehouse"
+                    t.order.exchange_point in exchange_points
+                ), f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not exist."
+
+                assert (
+                    t.order.material
+                    in exchange_point_to_materials[t.order.exchange_point]
+                ), f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not provide material '{t.order.material}'."

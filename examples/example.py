@@ -20,7 +20,7 @@ def main():
         with open(solution_path, "w") as f:
             f.write(json.dumps(json.loads(solution.to_json()), indent=4))
 
-        plot_solution(solution)
+        plot_solution(factory.truck_schedule_solution)
     else:
         print("No solution.")
 

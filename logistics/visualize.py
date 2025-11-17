@@ -7,25 +7,32 @@ from logistics import LogisticsSolution
 def plot_solution(solution: LogisticsSolution):
     fig, ax = plt.subplots()
     ax.set_xlabel("Time")
-    ax.set_ylabel("Truck")
+    ax.set_ylabel("Exchange Point")
     ax.grid(True)
     ax.set_axisbelow(True)
 
-    truck_orders = collections.defaultdict(lambda: {"delivery": [], "pickup": []})
+    exchange_point_orders = collections.defaultdict(
+        lambda: {"delivery": [], "pickup": []}
+    )
     for delivery_order in solution.delivery_orders:
-        truck_orders[delivery_order.truck_id]["delivery"].append(delivery_order)
-    for delivery_order in solution.pickup_orders:
-        truck_orders[delivery_order.truck_id]["pickup"].append(delivery_order)
+        exchange_point_orders[delivery_order.exchange_point]["delivery"].append(
+            delivery_order
+        )
+    for pickup_order in solution.pickup_orders:
+        exchange_point_orders[pickup_order.exchange_point]["pickup"].append(
+            pickup_order
+        )
 
-    truck_ids = sorted(list(truck_orders.keys()))
-    ax.set_yticks([2 + 6 * i for i in range(len(truck_ids))], truck_ids)
+    exchange_point_ids = sorted(list(exchange_point_orders.keys()))
+    ax.set_yticks(
+        [2 + 6 * i for i in range(len(exchange_point_ids))], exchange_point_ids
+    )
 
     cmap = cm.get_cmap("tab10")
-    exchange_point_color = {}
+    truck_color = {}
     for order in solution.delivery_orders + solution.pickup_orders:
-        ex = order.exchange_point
-        if ex not in exchange_point_color:
-            exchange_point_color[ex] = cmap(len(exchange_point_color))
+        if order.truck_id not in truck_color:
+            truck_color[order.truck_id] = cmap(len(truck_color))
 
     cmap = cm.get_cmap("Pastel1")
     material_color = {}
@@ -36,8 +43,8 @@ def plot_solution(solution: LogisticsSolution):
 
     y = 0
     dy = 2
-    for truck_id in truck_ids:
-        orders = truck_orders[truck_id]
+    for ep in exchange_point_ids:
+        orders = exchange_point_orders[ep]
         orders["delivery"].sort(key=lambda o: o.start_time)
         orders["pickup"].sort(key=lambda o: o.start_time)
 
@@ -59,12 +66,12 @@ def plot_solution(solution: LogisticsSolution):
                 ax.broken_barh(
                     [(order.start_time, order.duration)],
                     (y + 1, 1),
-                    facecolors=(exchange_point_color[order.exchange_point]),
+                    facecolors=(truck_color[order.truck_id]),
                 )
                 ax.text(
                     x=order.start_time + order.duration / 2,
                     y=y + 1.5,
-                    s=f"exchange_point={order.exchange_point}",
+                    s=f"truck={order.truck_id}",
                     ha="center",
                     va="center",
                     color="black",
