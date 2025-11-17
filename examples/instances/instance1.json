@@ -129,5 +129,15 @@
                 "duration": 30
             }
         }
+    ],
+    "ongoing_orders": [
+        {
+            "exchange_point": "P1",
+            "remaining_duration": 10
+        },
+        {
+            "exchange_point": "P2",
+            "remaining_duration": 20
+        }
     ]
 }

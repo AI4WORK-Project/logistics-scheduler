@@ -69,9 +69,23 @@ class ExchangePoint:
 
 @dataclass_json
 @dataclass
+class OngoingOrder:
+    exchange_point: str
+    remaining_duration: int
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        assert self.remaining_duration > 0, "Remaining duration must be positive."
+
+
+@dataclass_json
+@dataclass
 class LogisticsInstance:
     warehouse: List[ExchangePoint]
     trucks: List[Truck]
+    ongoing_orders: List[OngoingOrder]
 
     def __post_init__(self):
         self.validate()
@@ -108,3 +122,12 @@ class LogisticsInstance:
                     t.order.material
                     in exchange_point_to_materials[t.order.exchange_point]
                 ), f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not provide material '{t.order.material}'."
+
+        for order in self.ongoing_orders:
+            assert (
+                order.exchange_point in exchange_points
+            ), f"The exchange point '{order.exchange_point}' does not exist."
+
+        assert len(set(o.exchange_point for o in self.ongoing_orders)) == len(
+            self.ongoing_orders
+        ), "Duplicate exchange points found in ongoing orders."

@@ -37,13 +37,19 @@ class LogisticsSchedulingFactory:
             for m in ep.materials:
                 self.material_sites[(ep.exchange_point, m.material)] = m
 
+        self.exchange_point_busy_duration = {
+            o.exchange_point: o.remaining_duration for o in self.instance.ongoing_orders
+        }
+        for ep in self.instance.warehouse:
+            if ep.exchange_point not in self.exchange_point_busy_duration:
+                self.exchange_point_busy_duration[ep.exchange_point] = 0
+
         self.upper_bound = self.calculate_upper_bound()
-        self.delivery_activities: List[optional_activity_type] = []
-        self.pickup_activities: List[optional_activity_type] = []
         self.model, self.activities = self.get_optimization_model()
         self.truck_schedule_solution = None
 
     def calculate_upper_bound(self) -> int:
+        # TODO: improve estimation
         upper_bound = 0
         for truck in self.instance.trucks:
             upper_bound += truck.order.duration
@@ -54,11 +60,14 @@ class LogisticsSchedulingFactory:
         model: cp_model.CpModel,
         name: str,
         duration: int,
+        start_lower_bound: int = 0,
         params: Optional[Dict] = None,
     ) -> optional_activity_type:
         """Add an optional activity to the model."""
 
-        start_var = model.new_int_var(0, self.upper_bound, "start_" + name)
+        start_var = model.new_int_var(
+            start_lower_bound, self.upper_bound, "start_" + name
+        )
         is_present_var = model.new_bool_var("is_present_" + name)
         interval_var = model.new_optional_fixed_size_interval_var(
             start_var, duration, is_present_var, "interval_" + name
@@ -87,6 +96,7 @@ class LogisticsSchedulingFactory:
                 model,
                 f"{prefix}_{truck_id}_{order.material}_{exchange_point}",
                 order.duration,
+                start_lower_bound=self.exchange_point_busy_duration[exchange_point],
                 params={
                     "truck_id": truck_id,
                     "exchange_point": exchange_point,

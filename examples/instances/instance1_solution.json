@@ -1,32 +1,32 @@
 {
     "truck_entrance_order": [
         {
-            "truck_id": "T5",
-            "exchange_point": "P1"
-        },
-        {
-            "truck_id": "T6",
+            "truck_id": "T8",
             "exchange_point": "P3"
-        },
-        {
-            "truck_id": "T7",
-            "exchange_point": "P2"
         },
         {
             "truck_id": "T2",
             "exchange_point": "P1"
         },
         {
-            "truck_id": "T8",
-            "exchange_point": "P3"
+            "truck_id": "T6",
+            "exchange_point": "P2"
+        },
+        {
+            "truck_id": "T5",
+            "exchange_point": "P1"
         },
         {
             "truck_id": "T4",
-            "exchange_point": "P2"
+            "exchange_point": "P3"
         },
         {
             "truck_id": "T1",
             "exchange_point": "P1"
+        },
+        {
+            "truck_id": "T7",
+            "exchange_point": "P2"
         },
         {
             "truck_id": "T3",
