@@ -1,11 +1,13 @@
 {
     "warehouse": [
         {
-            "material": "M1",
-            "stock_level": 20,
-            "stock_capacity": 100,
-            "exchange_points": [
-                "P1"
+            "exchange_point": "P1",
+            "materials": [
+                {
+                    "material": "M1",
+                    "stock_level": 20,
+                    "stock_capacity": 100
+                }
             ]
         }
     ],
@@ -13,14 +15,14 @@
         {
             "id": "T1",
             "waiting_time": 60,
-            "delivery_orders": [
-                {
-                    "material": "M1",
-                    "quantity": 999999,
-                    "duration": 20
-                }
-            ],
-            "pickup_orders": []
+            "order": {
+                "is_delivery": false,
+                "material": "M1",
+                "quantity": 21,
+                "duration": 20,
+                "exchange_point": "P1"
+            }
         }
-    ]
+    ],
+    "ongoing_orders": []
 }
