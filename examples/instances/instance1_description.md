@@ -1,10 +1,10 @@
-# Input API Description
+# Input and Output API Description
 
-This document describes the structure and fields of the JSON file given as input to the scheduler.
+This document details the structure and fields of the scheduler’s input and output JSON files.
 
-## JSON Structure
+## Input JSON Structure
 
-The file consists of three main sections:
+The input file consists of three main sections:
 - `warehouse`: A list of materials stored in the warehouse, along with their stock levels and associated exchange points.
 - `trucks`: A list of trucks that have to deliver or pick up materials.
 - `ongoing_orders`: A list of orders currently being processed at exchange points.
@@ -94,3 +94,54 @@ The `ongoing_orders` field is an array of objects representing the orders curren
 }
 ```
 
+## Output JSON Structure
+
+The output file contains a single main section:
+- `truck_entrance_order`: The chronological sequence of trucks entering the yard with their assigned exchange points.
+
+Each `truck_entrance_order` entry contains:
+
+| Field           | Type    | Description |
+|-----------------|---------|-------------|
+| `truck_id` | String  | The identifier of the truck. |
+| `exchange_point` | String  | The identifier of the exchange point assigned to the truck. |
+
+#### Example:
+```json
+{
+    "truck_entrance_order": [
+        {
+            "truck_id": "T8",
+            "exchange_point": "P3"
+        },
+        {
+            "truck_id": "T2",
+            "exchange_point": "P1"
+        },
+        {
+            "truck_id": "T6",
+            "exchange_point": "P2"
+        },
+        {
+            "truck_id": "T5",
+            "exchange_point": "P1"
+        },
+        {
+            "truck_id": "T4",
+            "exchange_point": "P3"
+        },
+        {
+            "truck_id": "T1",
+            "exchange_point": "P1"
+        },
+        {
+            "truck_id": "T7",
+            "exchange_point": "P2"
+        },
+        {
+            "truck_id": "T3",
+            "exchange_point": "P1"
+        }
+    ]
+}
+```
