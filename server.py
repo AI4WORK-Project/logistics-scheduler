@@ -1,41 +1,68 @@
 import logging
-from flask import Flask, request, Response
-from logistics import LogisticsInstance, LogisticsSchedulingFactory
+from typing import Optional
 
-logging.basicConfig(level=logging.INFO)
+from apiflask import APIFlask, HTTPError, Schema
+from flask import request
 
-app = Flask("Logistics-Scheduler-API")
+from marshmallow_dataclass import class_schema
+
+from logistics.factory import LogisticsSchedulingFactory
+from logistics.instance import LogisticsInstance
+from logistics.solution import LogisticsSolution
 
 
-@app.route("/schedule", methods=["POST"])
-def schedule():
+logging.basicConfig(
+    level=logging.INFO, format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+)
+
+app = APIFlask(
+    "Logistics-Scheduler-API", title="Logistics Scheduler API", version="1.0"
+)
+app.openapi_version = "3.0.2"
+
+# generate the schema classes
+LogisticsInstanceSchema = class_schema(LogisticsInstance, base_schema=Schema)
+LogisticsSolutionSchema = class_schema(LogisticsSolution, base_schema=Schema)
+
+
+@app.post("/schedule")
+@app.input(LogisticsInstanceSchema, location="json")
+@app.output(LogisticsSolutionSchema, status_code=200)
+@app.doc(
+    summary="Schedule logistics tasks",
+    responses={
+        400: "No solution found",
+        422: "Invalid input",
+        500: "Internal server error",
+    },
+)
+def schedule(json_data):
     try:
-        logging.info("Request received!")
-
-        instance: LogisticsInstance = LogisticsInstance.from_dict(request.json)
-
-        factory = LogisticsSchedulingFactory(instance)
-
         time_limit = request.args.get("time_limit", None, type=int)
         logging.info(f"Time limit: {time_limit}")
 
-        solution = factory.get_solution(time_limit=time_limit)
-        if solution is not None:
-            logging.info(f"Solution found")
-        else:
-            logging.info("No solution has been found for the given problem")
-            return Response(
-                '{"message":"No solution has been found for the given problem"}',
-                mimetype="application/json",
-                status=400,
-            )
+        instance: LogisticsInstance = LogisticsInstance.from_dict(json_data)
+        logging.info("LogisticsInstance created")
 
-    except Exception as e:
-        return Response(
-            '{"message":"%s"}' % str(e), mimetype="application/json", status=500
+        factory = LogisticsSchedulingFactory(instance)
+        logging.info("LogisticsSchedulingFactory created")
+
+        solution: Optional[LogisticsSolution] = factory.get_solution(
+            time_limit=time_limit
         )
 
-    return Response(solution.to_json(), mimetype="application/json", status=200)
+    except Exception as e:
+        message = str(e)
+        logging.error(message)
+        raise HTTPError(status_code=500, message=message)
+
+    if solution is None:
+        message = "No solution has been found"
+        logging.error(message)
+        raise HTTPError(status_code=400, message=message)
+
+    logging.info("Solution found")
+    return solution.to_dict(), 200
 
 
 if __name__ == "__main__":

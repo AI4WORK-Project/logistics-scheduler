@@ -18,7 +18,7 @@ def load_instance_json(instance_name: str) -> Dict:
 
 def test_invalid_instance():
     response = requests.post(URL, json="")
-    assert response.status_code == 500
+    assert response.status_code == 422
     assert len(response.json()["message"]) > 0
 
 
