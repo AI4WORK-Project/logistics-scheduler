@@ -2,9 +2,9 @@ import logging
 from typing import Optional
 
 from apiflask import APIFlask, HTTPError, Schema
-from flask import request
 
 from marshmallow_dataclass import class_schema
+from pydantic import BaseModel, Field
 
 from logistics.factory import LogisticsSchedulingFactory
 from logistics.instance import LogisticsInstance
@@ -20,12 +20,18 @@ app = APIFlask(
 )
 app.openapi_version = "3.0.2"
 
+
+class QueryParamsSchema(BaseModel):
+    time_limit: int = Field(gt=0)
+
+
 # generate the schema classes
 LogisticsInstanceSchema = class_schema(LogisticsInstance, base_schema=Schema)
 LogisticsSolutionSchema = class_schema(LogisticsSolution, base_schema=Schema)
 
 
 @app.post("/schedule")
+@app.input(QueryParamsSchema, location="query")
 @app.input(LogisticsInstanceSchema, location="json")
 @app.output(LogisticsSolutionSchema, status_code=200)
 @app.doc(
@@ -36,9 +42,9 @@ LogisticsSolutionSchema = class_schema(LogisticsSolution, base_schema=Schema)
         500: "Internal server error",
     },
 )
-def schedule(json_data):
+def schedule(query_data, json_data):
     try:
-        time_limit = request.args.get("time_limit", None, type=int)
+        time_limit = query_data.time_limit
         logging.info(f"Time limit: {time_limit}")
 
         instance: LogisticsInstance = LogisticsInstance.from_dict(json_data)
