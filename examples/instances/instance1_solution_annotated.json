@@ -1,8 +1,8 @@
 {
-    "truck_entrance_order": [
+    "truck_entrance_order": [ // Chronological sequence of trucks entering the yard with their assigned exchange points
         {
-            "truck_id": "T8",
-            "exchange_point": "P3"
+            "truck_id": "T8", // Identifier of the truck
+            "exchange_point": "P3" // Identifier of the exchange point
         },
         {
             "truck_id": "T2",
