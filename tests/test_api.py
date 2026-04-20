@@ -24,7 +24,7 @@ def test_invalid_instance():
 
 def test_instance_not_solvable():
     instance = load_instance_json("instance_not_solvable.json")
-    response = requests.post(URL, json=instance)
+    response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance)
     assert response.status_code == 400
     assert len(response.json()["message"]) > 0
 
