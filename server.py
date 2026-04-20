@@ -63,7 +63,7 @@ def schedule(query_data, json_data):
         raise HTTPError(status_code=500, message=message)
 
     if solution is None:
-        message = "No solution has been found"
+        message = "No solution has been found for the given problem"
         logging.error(message)
         raise HTTPError(status_code=400, message=message)
 
