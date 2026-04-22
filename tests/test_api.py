@@ -1,4 +1,5 @@
 import json
+import pytest
 import requests
 import pathlib
 import os
@@ -17,7 +18,15 @@ def load_instance_json(instance_name: str) -> Dict:
 
 
 def test_invalid_instance():
-    response = requests.post(URL, json="")
+    response = requests.post(URL, params={"time_limit": 10 * 60}, json="")
+    assert response.status_code == 422
+    assert len(response.json()["message"]) > 0
+
+
+@pytest.mark.parametrize("instance", range(2))
+def test_incomplete_instance(instance: int):
+    instance_json = load_instance_json(f"instance_incomplete{instance}.json")
+    response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance_json)
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
 
