@@ -175,8 +175,12 @@ class LogisticsSchedulingFactory:
                 [activity.start + activity.duration for activity in truck_activities],
             )
 
-        # model.minimize(10 * makespan_var + sum(truck_makespan_vars))
-        model.minimize(sum(truck_makespan_vars))
+        model.minimize(
+            sum(
+                (truck.waiting_time + 1) * truck_makespan_vars[i]
+                for i, truck in enumerate(self.instance.trucks)
+            )
+        )
 
     def get_optimization_model(
         self,
