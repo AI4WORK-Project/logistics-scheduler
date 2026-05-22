@@ -47,9 +47,9 @@ class MaterialSite:
     def validate(self):
         assert self.stock_level >= 0, "Stock level cannot be negative."
         assert self.stock_capacity >= 0, "Stock capacity cannot be negative."
-        assert (
-            self.stock_capacity >= self.stock_level
-        ), "Stock level cannot be greater than stock capacity."
+        assert self.stock_capacity >= self.stock_level, (
+            "Stock level cannot be greater than stock capacity."
+        )
 
 
 @dataclass_json
@@ -62,9 +62,9 @@ class ExchangePoint:
         self.validate()
 
     def validate(self):
-        assert len(set(m.material for m in self.materials)) == len(
-            self.materials
-        ), f"Duplicate materials found in exchange point '{self.exchange_point}'."
+        assert len(set(m.material for m in self.materials)) == len(self.materials), (
+            f"Duplicate materials found in exchange point '{self.exchange_point}'."
+        )
 
 
 @dataclass_json
@@ -92,19 +92,19 @@ class LogisticsInstance:
 
     def validate(self):
         exchange_points = set(ep.exchange_point for ep in self.warehouse)
-        assert len(exchange_points) == len(
-            self.warehouse
-        ), "Duplicate exchange points found."
+        assert len(exchange_points) == len(self.warehouse), (
+            "Duplicate exchange points found."
+        )
 
-        assert len(set(t.id for t in self.trucks)) == len(
-            self.trucks
-        ), "Duplicate trucks found."
+        assert len(set(t.id for t in self.trucks)) == len(self.trucks), (
+            "Duplicate trucks found."
+        )
 
         materials = set(m.material for ep in self.warehouse for m in ep.materials)
         for t in self.trucks:
-            assert (
-                t.order.material in materials
-            ), f"Truck '{t.id}' has an order with material '{t.order.material}', but this material does not exist in the warehouse."
+            assert t.order.material in materials, (
+                f"Truck '{t.id}' has an order with material '{t.order.material}', but this material does not exist in the warehouse."
+            )
 
         exchange_point_to_materials = {}
         for ep in self.warehouse:
@@ -114,19 +114,21 @@ class LogisticsInstance:
 
         for t in self.trucks:
             if t.order.exchange_point is not None:
-                assert (
-                    t.order.exchange_point in exchange_points
-                ), f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not exist."
+                assert t.order.exchange_point in exchange_points, (
+                    f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not exist."
+                )
 
                 assert (
                     t.order.material
                     in exchange_point_to_materials[t.order.exchange_point]
-                ), f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not provide material '{t.order.material}'."
+                ), (
+                    f"The exchange point '{t.order.exchange_point}' required by truck '{t.id}' does not provide material '{t.order.material}'."
+                )
 
         for order in self.ongoing_orders:
-            assert (
-                order.exchange_point in exchange_points
-            ), f"The exchange point '{order.exchange_point}' does not exist."
+            assert order.exchange_point in exchange_points, (
+                f"The exchange point '{order.exchange_point}' does not exist."
+            )
 
         assert len(set(o.exchange_point for o in self.ongoing_orders)) == len(
             self.ongoing_orders

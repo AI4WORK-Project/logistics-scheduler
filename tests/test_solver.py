@@ -63,7 +63,7 @@ def check_truck_entrance_order(
         last_order_end[t.exchange_point] += trucks[t.truck_id].order.duration
 
 
-@pytest.mark.parametrize("instance", range(7))
+@pytest.mark.parametrize("instance", range(8))
 def test_instance(instance: int):
     instance, solution = solve_instance(instance, time_limit=60)
 

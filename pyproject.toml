@@ -6,15 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "logistics"
 version = "0.1.0"
 dependencies = [
-    "ortools==9.14.6206",
-    "dataclasses-json==0.6.7",
-    "flask==3.1.2",
-    "waitress==3.0.2",
-    "matplotlib==3.10.6"
+  "ortools==9.14.6206",
+  "dataclasses-json==0.6.7",
+  "marshmallow_dataclass==8.7.1",
+  "apiflask==3.1.0",
+  "waitress==3.0.2",
+  "matplotlib==3.10.6",
 ]
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-    "requests"
-]
+test = ["pytest", "requests"]
+example = ["requests"]

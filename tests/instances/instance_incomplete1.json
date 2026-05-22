@@ -1,0 +1,115 @@
+{
+  "warehouse": [],
+  "trucks": [
+    {
+      "id": "T0",
+      "waiting_time": 20,
+      "order": {
+        "is_delivery": true,
+        "material": "M9",
+        "quantity": 21,
+        "duration": 10
+      }
+    },
+    {
+      "id": "T1",
+      "waiting_time": 56,
+      "order": {
+        "is_delivery": true,
+        "material": "M2",
+        "quantity": 6,
+        "duration": 26,
+        "exchange_point": "P0"
+      }
+    },
+    {
+      "id": "T2",
+      "waiting_time": 48,
+      "order": {
+        "is_delivery": false,
+        "material": "M7",
+        "quantity": 19,
+        "duration": 34
+      }
+    },
+    {
+      "id": "T3",
+      "waiting_time": 15,
+      "order": {
+        "is_delivery": false,
+        "material": "M3",
+        "quantity": 25,
+        "duration": 22
+      }
+    },
+    {
+      "id": "T4",
+      "waiting_time": 38,
+      "order": {
+        "is_delivery": false,
+        "material": "M7",
+        "quantity": 29,
+        "duration": 39,
+        "exchange_point": "P9"
+      }
+    },
+    {
+      "id": "T5",
+      "waiting_time": 53,
+      "order": {
+        "is_delivery": false,
+        "material": "M8",
+        "quantity": 20,
+        "duration": 21
+      }
+    },
+    {
+      "id": "T6",
+      "waiting_time": 29,
+      "order": {
+        "is_delivery": true,
+        "material": "M0",
+        "quantity": 8,
+        "duration": 27
+      }
+    },
+    {
+      "id": "T7",
+      "waiting_time": 10,
+      "order": {
+        "is_delivery": true,
+        "material": "M7",
+        "quantity": 18,
+        "duration": 20,
+        "exchange_point": "P5"
+      }
+    }
+  ],
+  "ongoing_orders": [
+    {
+      "exchange_point": "P1",
+      "remaining_duration": 13
+    },
+    {
+      "exchange_point": "P2",
+      "remaining_duration": 19
+    },
+    {
+      "exchange_point": "P3",
+      "remaining_duration": 4
+    },
+    {
+      "exchange_point": "P6",
+      "remaining_duration": 16
+    },
+    {
+      "exchange_point": "P7",
+      "remaining_duration": 29
+    },
+    {
+      "exchange_point": "P9",
+      "remaining_duration": 23
+    }
+  ]
+}
+
