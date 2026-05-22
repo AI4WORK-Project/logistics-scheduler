@@ -30,6 +30,16 @@ LogisticsInstanceSchema = class_schema(LogisticsInstance, base_schema=Schema)
 LogisticsSolutionSchema = class_schema(LogisticsSolution, base_schema=Schema)
 
 
+@app.errorhandler(AssertionError)
+def validation_error(error):
+    message = str(error)
+    logging.error(f"Validation: {message}")
+    return {
+        "message": "Validation error",
+        "detail": message,
+    }, 422
+
+
 @app.post("/schedule")
 @app.input(QueryParamsSchema, location="query")
 @app.input(LogisticsInstanceSchema, location="json")

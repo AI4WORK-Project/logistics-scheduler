@@ -21,6 +21,23 @@ def test_invalid_instance():
     response = requests.post(URL, params={"time_limit": 10 * 60}, json="")
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
+    print(f"{response.json()}")
+
+
+def test_missing_query_param():
+    instance = load_instance_json("instance0.json")
+    response = requests.post(URL, json=instance)
+    assert response.status_code == 422
+    assert len(response.json()["message"]) > 0
+    print(f"{response.json()}")
+
+
+def test_invalid_query_param():
+    instance = load_instance_json("instance0.json")
+    response = requests.post(URL, params={"time_limit": 0}, json=instance)
+    assert response.status_code == 422
+    assert len(response.json()["message"]) > 0
+    print(f"{response.json()}")
 
 
 @pytest.mark.parametrize("instance", range(2))
@@ -29,6 +46,7 @@ def test_incomplete_instance(instance: int):
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance_json)
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
+    print(f"{response.json()}")
 
 
 def test_instance_not_solvable():
@@ -36,6 +54,7 @@ def test_instance_not_solvable():
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance)
     assert response.status_code == 400
     assert len(response.json()["message"]) > 0
+    print(f"{response.json()}")
 
 
 def test_valid_instance():
