@@ -46,4 +46,4 @@ jobs:
       - name: Build and push the container image
         run: |
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && IMAGE_VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,' | sed -e 's/^v//') || IMAGE_VERSION="latest"
-          docker buildx build . --push --file ./src/main/docker/Dockerfile.jvm --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler:$IMAGE_VERSION
+          docker buildx build . --push --file ./Dockerfile --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler:$IMAGE_VERSION
