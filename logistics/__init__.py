@@ -1,3 +1,3 @@
-from .instance import LogisticsInstance
-from .factory import LogisticsSchedulingFactory
-from .solution import LogisticsSolution
+from .factory import LogisticsSchedulingFactory as LogisticsSchedulingFactory
+from .instance import LogisticsInstance as LogisticsInstance
+from .solution import LogisticsSolution as LogisticsSolution

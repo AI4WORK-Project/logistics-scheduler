@@ -1,19 +1,20 @@
 import collections
-from typing import List, Tuple, Dict, Optional, Iterator
+from collections.abc import Iterator
+
 from ortools.sat.python import cp_model
+
 from .instance import (
-    LogisticsInstance,
     DeliveryPickupOrder,
     ExchangePoint,
+    LogisticsInstance,
     MaterialSite,
 )
 from .solution import (
-    TruckScheduleSolution,
-    ScheduledOrder,
     LogisticsSolution,
+    ScheduledOrder,
     TruckExchangePoint,
+    TruckScheduleSolution,
 )
-
 
 optional_activity_type = collections.namedtuple(
     "optional_activity_type", "start duration interval is_present params"
@@ -21,18 +22,17 @@ optional_activity_type = collections.namedtuple(
 
 
 class LogisticsSchedulingFactory:
-
     def __init__(self, instance: LogisticsInstance):
         self.instance = instance
 
-        self.material_to_exchange_point: Dict[str, List[ExchangePoint]] = {}
+        self.material_to_exchange_point: dict[str, list[ExchangePoint]] = {}
         for ep in self.instance.warehouse:
             for m in ep.materials:
                 if m.material not in self.material_to_exchange_point:
                     self.material_to_exchange_point[m.material] = []
                 self.material_to_exchange_point[m.material].append(ep.exchange_point)
 
-        self.material_sites: Dict[Tuple[str, str], MaterialSite] = {}
+        self.material_sites: dict[tuple[str, str], MaterialSite] = {}
         for ep in self.instance.warehouse:
             for m in ep.materials:
                 self.material_sites[(ep.exchange_point, m.material)] = m
@@ -61,7 +61,7 @@ class LogisticsSchedulingFactory:
         name: str,
         duration: int,
         start_lower_bound: int = 0,
-        params: Optional[Dict] = None,
+        params: dict | None = None,
     ) -> optional_activity_type:
         """Add an optional activity to the model."""
 
@@ -82,7 +82,7 @@ class LogisticsSchedulingFactory:
 
     def add_delivery_pickup_activity(
         self, model: cp_model.CpModel, order: DeliveryPickupOrder, truck_id: str
-    ) -> List[optional_activity_type]:
+    ) -> list[optional_activity_type]:
         prefix = "delivery" if order.is_delivery else "pickup"
         activities = []
 
@@ -104,12 +104,12 @@ class LogisticsSchedulingFactory:
                 },
             )
             activities.append(activity)
-        model.add_exactly_one(map(lambda a: a.is_present, activities))
+        model.add_exactly_one(a.is_present for a in activities)
 
         return activities
 
     def enforce_exchange_point_constraints(
-        self, model: cp_model.CpModel, activities: List[optional_activity_type]
+        self, model: cp_model.CpModel, activities: list[optional_activity_type]
     ):
         exchange_point_activities = {}
         for act in activities:
@@ -119,10 +119,10 @@ class LogisticsSchedulingFactory:
             exchange_point_activities[exchange_point].append(act)
 
         for activities in exchange_point_activities.values():
-            model.add_no_overlap(map(lambda act: act.interval, activities))
+            model.add_no_overlap(act.interval for act in activities)
 
     def enforce_stock_constraints(
-        self, model: cp_model.CpModel, activities: List[optional_activity_type]
+        self, model: cp_model.CpModel, activities: list[optional_activity_type]
     ):
         material_site_activities = {}
         for act in activities:
@@ -133,7 +133,7 @@ class LogisticsSchedulingFactory:
 
         for material_site, activities in material_site_activities.items():
             material_site = self.material_sites[material_site]
-            times = [0] + list(map(lambda act: act.start + act.duration, activities))
+            times = [0] + [act.start + act.duration for act in activities]
             level_changes = [material_site.stock_level] + [
                 (
                     act.params["order"].quantity
@@ -141,7 +141,7 @@ class LogisticsSchedulingFactory:
                 )
                 for act in activities
             ]
-            actives = [True] + list(map(lambda act: act.is_present, activities))
+            actives = [True] + [act.is_present for act in activities]
             model.add_reservoir_constraint_with_active(
                 times,
                 level_changes,
@@ -151,7 +151,7 @@ class LogisticsSchedulingFactory:
             )
 
     def add_quality_metric(
-        self, model: cp_model.CpModel, activities: List[optional_activity_type]
+        self, model: cp_model.CpModel, activities: list[optional_activity_type]
     ):
         """Sets the objective of the model to minimize."""
 
@@ -184,7 +184,7 @@ class LogisticsSchedulingFactory:
 
     def get_optimization_model(
         self,
-    ) -> Tuple[cp_model.CpModel, List[optional_activity_type]]:
+    ) -> tuple[cp_model.CpModel, list[optional_activity_type]]:
         model = cp_model.CpModel()
         activities = []
         for truck in self.instance.trucks:
@@ -199,9 +199,7 @@ class LogisticsSchedulingFactory:
 
         return model, activities
 
-    def get_solution(
-        self, time_limit: Optional[int] = None
-    ) -> Optional[LogisticsSolution]:
+    def get_solution(self, time_limit: int | None = None) -> LogisticsSolution | None:
         self.truck_schedule_solution = None
         solver = cp_model.CpSolver()
         if time_limit is not None:
@@ -213,7 +211,7 @@ class LogisticsSchedulingFactory:
 
             def construct_scheduled_orders(
                 activities: Iterator[optional_activity_type],
-            ) -> List[ScheduledOrder]:
+            ) -> list[ScheduledOrder]:
                 scheduled_orders = []
                 for activity in activities:
                     if solver.value(activity.is_present):
@@ -241,12 +239,12 @@ class LogisticsSchedulingFactory:
                 delivery_orders, pickup_orders
             )
 
-            truck_entrance_order = list(
-                map(
-                    lambda o: TruckExchangePoint(o.truck_id, o.exchange_point),
-                    sorted(delivery_orders + pickup_orders, key=lambda o: o.start_time),
+            truck_entrance_order = [
+                TruckExchangePoint(o.truck_id, o.exchange_point)
+                for o in sorted(
+                    delivery_orders + pickup_orders, key=lambda o: o.start_time
                 )
-            )
+            ]
 
             return LogisticsSolution(truck_entrance_order)
 
