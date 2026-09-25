@@ -27,26 +27,12 @@ jobs:
       - name: Install package and dependencies
         run: |
           python3 -m pip install .[test]
-      - name: Run solver tests
+      - name: Run all tests
         run: |
-          python -m pytest -v ./tests/test_solver.py
-      - name: Run API tests
-        run: |
-          python server.py &
-          SERVER_PID=$!
-          sleep 1
-          python -m pytest -v ./tests/test_api.py
-          kill $SERVER_PID
-      - name: Client example test
-        run: |
-          python server.py &
-          SERVER_PID=$!
-          sleep 1
-          python examples/client_example.py
-          kill $SERVER_PID
+          python -m pytest -sv ./tests/*
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
       - name: Build and push the container image
         run: |
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && IMAGE_VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,' | sed -e 's/^v//') || IMAGE_VERSION="latest"
-          docker buildx build . --push --file ./Dockerfile --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler:$IMAGE_VERSION
+          docker buildx build . --push --file ./Dockerfile --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler-kafka:$IMAGE_VERSION
