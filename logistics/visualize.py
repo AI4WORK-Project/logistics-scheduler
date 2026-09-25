@@ -1,11 +1,13 @@
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import collections
-from logistics import LogisticsSolution
+
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
+from logistics.solution import TruckScheduleSolution
 
 
-def plot_solution(solution: LogisticsSolution):
-    fig, ax = plt.subplots()
+def plot_solution(solution: TruckScheduleSolution):
+    _fig, ax = plt.subplots()
     ax.set_xlabel("Time")
     ax.set_ylabel("Exchange Point")
     ax.grid(True)
@@ -23,7 +25,7 @@ def plot_solution(solution: LogisticsSolution):
             pickup_order
         )
 
-    exchange_point_ids = sorted(list(exchange_point_orders.keys()))
+    exchange_point_ids = sorted(exchange_point_orders.keys())
     ax.set_yticks(
         [2 + 6 * i for i in range(len(exchange_point_ids))], exchange_point_ids
     )
