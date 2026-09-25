@@ -82,7 +82,12 @@ def schedule(query_data, json_data):
     return solution.to_dict(), 200
 
 
-if __name__ == "__main__":
+def start():
+    logger.info("Starting...")
     from waitress import serve
 
     serve(app, host="0.0.0.0", port=5000)
+
+
+if __name__ == "__main__":
+    start()
