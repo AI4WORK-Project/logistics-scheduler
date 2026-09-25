@@ -1,11 +1,10 @@
-import dataclasses
-import dataclasses_json
-from typing import List
+from dataclasses import dataclass
+
+from dataclasses_json import DataClassJsonMixin
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class ScheduledOrder:
+@dataclass
+class ScheduledOrder(DataClassJsonMixin):
     truck_id: str
     material: str
     quantity: int
@@ -14,21 +13,18 @@ class ScheduledOrder:
     exchange_point: str
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class TruckScheduleSolution:
-    delivery_orders: List[ScheduledOrder]
-    pickup_orders: List[ScheduledOrder]
+@dataclass
+class TruckScheduleSolution(DataClassJsonMixin):
+    delivery_orders: list[ScheduledOrder]
+    pickup_orders: list[ScheduledOrder]
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class TruckExchangePoint:
+@dataclass
+class TruckExchangePoint(DataClassJsonMixin):
     truck_id: str
     exchange_point: str
 
 
-@dataclasses_json.dataclass_json
-@dataclasses.dataclass
-class LogisticsSolution:
-    truck_entrance_order: List[TruckExchangePoint]
+@dataclass
+class LogisticsSolution(DataClassJsonMixin):
+    truck_entrance_order: list[TruckExchangePoint]
