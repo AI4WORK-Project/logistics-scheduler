@@ -1,5 +1,6 @@
 import logging
 
+import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
 from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
@@ -24,8 +25,12 @@ class QueryParamsSchema(BaseModel):
 
 
 # generate the schema classes
-LogisticsInstanceSchema = class_schema(LogisticsInstance, base_schema=Schema)
-LogisticsSolutionSchema = class_schema(LogisticsSolution, base_schema=Schema)
+LogisticsInstanceSchema: marshmallow.schema.SchemaMeta = class_schema(
+    LogisticsInstance, base_schema=Schema
+)
+LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
+    LogisticsSolution, base_schema=Schema
+)
 
 
 @app.errorhandler(AssertionError)
