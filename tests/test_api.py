@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import pathlib
 import threading
@@ -12,10 +13,12 @@ import server
 URL = "http://0.0.0.0:5000/schedule"
 INSTANCES_PATH = os.path.join(pathlib.Path(__file__).parent.resolve(), "instances")
 
+logger = logging.getLogger("test_api")
+
 
 @pytest.fixture(scope="module", autouse=True)
 def start_server(request):
-    print("\n[Setup] starting server...")
+    logger.info("[Setup] starting server...")
     server_thread = threading.Thread(target=server.start, daemon=True)
     server_thread.start()
 
@@ -24,7 +27,7 @@ def start_server(request):
     # yield control to the test suite
     yield
 
-    print("\n[Teardown] stopping server...")
+    logger.info("[Teardown] stopping server...")
 
 
 def load_instance_json(instance_name: str) -> dict:
@@ -38,7 +41,7 @@ def test_invalid_instance():
     response = requests.post(URL, params={"time_limit": 10 * 60}, json="")
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")
 
 
 def test_missing_query_param():
@@ -46,7 +49,7 @@ def test_missing_query_param():
     response = requests.post(URL, json=instance)
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")
 
 
 def test_invalid_query_param():
@@ -54,7 +57,7 @@ def test_invalid_query_param():
     response = requests.post(URL, params={"time_limit": 0}, json=instance)
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")
 
 
 @pytest.mark.parametrize("instance", range(2))
@@ -63,7 +66,7 @@ def test_incomplete_instance(instance: int):
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance_json)
     assert response.status_code == 422
     assert len(response.json()["message"]) > 0
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")
 
 
 def test_instance_not_solvable():
@@ -71,11 +74,11 @@ def test_instance_not_solvable():
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance)
     assert response.status_code == 400
     assert len(response.json()["message"]) > 0
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")
 
 
 def test_valid_instance():
     instance = load_instance_json("instance0.json")
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance)
     assert response.status_code == 200
-    print(f"{response.json()}")
+    logger.info(f"{response.json()}")

@@ -10,7 +10,8 @@ from logistics.instance import LogisticsInstance
 from logistics.solution import LogisticsSolution
 
 logging.basicConfig(
-    level=logging.INFO, format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
 )
 logger = logging.getLogger("logistics-scheduler-server")
 
