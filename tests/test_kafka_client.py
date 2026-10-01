@@ -18,26 +18,58 @@ logger = logging.getLogger("test_kafka_client")
 
 @pytest.fixture(scope="session", autouse=True)
 def kafka_container(request):
-    with KafkaContainer() as kafka:
+    cwd = os.getcwd()
+    with (
+        KafkaContainer(
+            image="confluentinc/cp-kafka:8.3.2",
+            listener_name="SASL_PLAINTEXT",
+            security_protocol="SASL_PLAINTEXT",
+        )
+        .with_env("KAFKA_SASL_ENABLED_MECHANISMS", "PLAIN")
+        .with_env(
+            "KAFKA_OPTS",
+            "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf",
+        )
+        .with_volume_mapping(
+            f"{cwd}/tests/config/kafka_server_jaas.conf",
+            "/etc/kafka/kafka_server_jaas.conf",
+        )
+        .with_kraft() as kafka
+    ):
         bootstrap_server = kafka.get_bootstrap_server()
         logger.info(f"bootstrap_server: {bootstrap_server}")
-        os.environ["BOOTSTRAP_SERVER"] = bootstrap_server
-        yield bootstrap_server
+        username = "user"
+        password = "password"
+        os.environ["KAFKA_BOOTSTRAP_SERVER"] = bootstrap_server
+        os.environ["KAFKA_USERNAME"] = username
+        os.environ["KAFKA_PASSWORD"] = password
+        yield bootstrap_server, username, password
 
 
 @pytest.fixture(autouse=True)
 def kafka_test_helpers(kafka_container):
+    bootstrap_server, username, password = kafka_container
+    logger.info(f"bootstrap_server: {bootstrap_server}")
+
+    sasl_config = {
+        "security.protocol": "SASL_PLAINTEXT",
+        "sasl.mechanism": "PLAIN",
+        "sasl.username": username,
+        "sasl.password": password,
+    }
     test_consumer_config = {
-        "bootstrap.servers": kafka_container,
+        "bootstrap.servers": bootstrap_server,
         "group.id": "test-verifier-group",
         "auto.offset.reset": "earliest",
     }
+    test_consumer_config.update(sasl_config)
     test_consumer = Consumer(test_consumer_config)
 
     test_producer_config = {
-        "bootstrap.servers": kafka_container,
+        "bootstrap.servers": bootstrap_server,
         "acks": "all",
     }
+    test_producer_config.update(sasl_config)
     test_producer = Producer(test_producer_config)
 
     yield test_consumer, test_producer
@@ -53,7 +85,7 @@ def kafka_test_helpers(kafka_container):
 
 def delivery_callback(err, msg):
     if err:
-        logger.info("Failed to send message: {err}")
+        logger.info(f"Failed to send message: {err}")
     else:
         logger.info(f"Sent message to topic {msg.topic()}")
 
@@ -77,7 +109,7 @@ def test_kafka_client(kafka_test_helpers):
         json.dumps(logistics_instance.to_dict()),
         callback=delivery_callback,
     )
-    test_producer.flush()
+    test_producer.flush(5)
 
     logistics_solution: LogisticsSolution | None = None
     # Try polling for up to 10 seconds
