@@ -1,8 +1,9 @@
+import json
+import os
+import pathlib
+
 from logistics import LogisticsInstance, LogisticsSchedulingFactory
 from logistics.visualize import plot_solution
-import pathlib
-import os
-import json
 
 
 def main():
@@ -10,8 +11,8 @@ def main():
     instance_path = os.path.join(examples_path, "instances/instance1.json")
     solution_path = os.path.join(examples_path, "instances/instance1_solution.json")
     with open(instance_path, "r") as f:
-        instance = f.read()
-    instance: LogisticsInstance = LogisticsInstance.from_json(instance)
+        instance_json = f.read()
+    instance: LogisticsInstance = LogisticsInstance.from_json(instance_json)
 
     factory = LogisticsSchedulingFactory(instance)
     solution = factory.get_solution()
@@ -20,7 +21,8 @@ def main():
         with open(solution_path, "w") as f:
             f.write(json.dumps(json.loads(solution.to_json()), indent=4))
 
-        plot_solution(factory.truck_schedule_solution)
+        if factory.truck_schedule_solution is not None:
+            plot_solution(factory.truck_schedule_solution)
     else:
         print("No solution.")
 

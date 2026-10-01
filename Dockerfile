@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml /app/
 COPY logistics/ /app/logistics/
 COPY server.py /app/
+COPY kafka_client.py /app/
 
 # Install the logistics package and dependencies
 RUN pip install /app/

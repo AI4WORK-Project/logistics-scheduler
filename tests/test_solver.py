@@ -1,24 +1,25 @@
-from logistics import LogisticsInstance, LogisticsSolution, LogisticsSchedulingFactory
-import pathlib
 import os
-from typing import Tuple, Optional
+import pathlib
+
 import pytest
+
+from logistics import LogisticsInstance, LogisticsSchedulingFactory, LogisticsSolution
 
 
 def solve_instance(
-    instance: int, time_limit: Optional[int] = None
-) -> Tuple[LogisticsInstance, LogisticsSolution]:
+    instance: int, time_limit: int | None = None
+) -> tuple[LogisticsInstance, LogisticsSolution]:
     instances_path = os.path.join(pathlib.Path(__file__).parent.resolve(), "instances")
     instance_path = os.path.join(instances_path, f"instance{instance}.json")
 
     with open(instance_path, "r") as f:
-        instance = f.read()
-    instance: LogisticsInstance = LogisticsInstance.from_json(instance)
+        instance_json = f.read()
+    logistics_instance: LogisticsInstance = LogisticsInstance.from_json(instance_json)
 
-    factory = LogisticsSchedulingFactory(instance)
-    solution: LogisticsSolution = factory.get_solution(time_limit)
+    factory = LogisticsSchedulingFactory(logistics_instance)
+    solution: LogisticsSolution | None = factory.get_solution(time_limit)
     assert solution is not None
-    return instance, solution
+    return logistics_instance, solution
 
 
 def check_stock_level_constraints(
@@ -65,11 +66,11 @@ def check_truck_entrance_order(
 
 @pytest.mark.parametrize("instance", range(8))
 def test_instance(instance: int):
-    instance, solution = solve_instance(instance, time_limit=60)
+    logistics_instance, solution = solve_instance(instance, time_limit=60)
 
-    assert set(t.id for t in instance.trucks) == set(
+    assert {t.id for t in logistics_instance.trucks} == {
         t.truck_id for t in solution.truck_entrance_order
-    )
+    }
 
-    check_stock_level_constraints(instance, solution)
-    check_truck_entrance_order(instance, solution)
+    check_stock_level_constraints(logistics_instance, solution)
+    check_truck_entrance_order(logistics_instance, solution)
