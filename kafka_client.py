@@ -22,13 +22,23 @@ class KafkaClient:
 
         self.logger = logging.getLogger("kafka-client")
 
-        bootstrap_server = os.environ["BOOTSTRAP_SERVER"]
+        bootstrap_server = os.environ["KAFKA_BOOTSTRAP_SERVER"]
         self.logger.info(f"Kafka bootstrap servers: {bootstrap_server}")
+
+        username = os.environ["KAFKA_USERNAME"]
+        password = os.environ["KAFKA_PASSWORD"]
+        sasl_config = {
+            "security.protocol": "SASL_PLAINTEXT",
+            "sasl.mechanism": "PLAIN",
+            "sasl.username": username,
+            "sasl.password": password,
+        }
 
         producer_config = {
             "bootstrap.servers": bootstrap_server,
             "acks": "all",
         }
+        producer_config.update(sasl_config)
         self.producer_topic = "logistics-solution"
         self.producer = Producer(producer_config)
 
@@ -37,6 +47,7 @@ class KafkaClient:
             "group.id": "logistics-scheduler",
             "auto.offset.reset": "earliest",
         }
+        consumer_config.update(sasl_config)
         self.consumer_topic = "logistics-instance"
         self.consumer = Consumer(consumer_config)
         self.consuming = False
@@ -58,7 +69,7 @@ class KafkaClient:
         self.producer.produce(
             self.producer_topic, logistics_solution_json, callback=delivery_callback
         )
-        self.producer.flush()
+        self.producer.flush(10)
 
     def __consume(self):
         self.consumer.subscribe([self.consumer_topic])
