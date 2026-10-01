@@ -4,6 +4,7 @@ import os
 import signal
 
 from confluent_kafka import Consumer, KafkaError, Producer
+from confluent_kafka._types import HeadersType
 
 from logistics.factory import LogisticsSchedulingFactory
 from logistics.instance import LogisticsInstance
@@ -39,7 +40,6 @@ class KafkaClient:
             "acks": "all",
         }
         producer_config.update(sasl_config)
-        self.producer_topic = "logistics-solution"
         self.producer = Producer(producer_config)
 
         consumer_config = {
@@ -48,7 +48,7 @@ class KafkaClient:
             "auto.offset.reset": "earliest",
         }
         consumer_config.update(sasl_config)
-        self.consumer_topic = "logistics-instance"
+        self.consumer_topic = os.environ["KAFKA_TOPIC_LOGISTICS-INSTANCE"]
         self.consumer = Consumer(consumer_config)
         self.consuming = False
 
@@ -56,7 +56,12 @@ class KafkaClient:
         self.logger.info(f"Received shutdown signal {signum}")
         self.stop()
 
-    def __produce(self, logistics_solution: LogisticsSolution):
+    def __produce(
+        self,
+        logistics_solution: LogisticsSolution,
+        correlation_id: str,
+        reply_topic: str,
+    ):
         def delivery_callback(err, msg):
             if err:
                 self.logger.error("Failed to return LogisticsSolution: {err}")
@@ -67,11 +72,17 @@ class KafkaClient:
 
         logistics_solution_json: str = json.dumps(logistics_solution.to_dict())
         self.producer.produce(
-            self.producer_topic, logistics_solution_json, callback=delivery_callback
+            reply_topic,
+            logistics_solution_json,
+            headers=[
+                ("CorrelationId", correlation_id.encode("utf-8")),
+            ],
+            on_delivery=delivery_callback,
         )
         self.producer.flush(10)
 
     def __consume(self):
+        self.logger.info(f"Subscribing to topic {self.consumer_topic}")
         self.consumer.subscribe([self.consumer_topic])
         while self.consuming:
             msg = self.consumer.poll(1.0)
@@ -90,15 +101,44 @@ class KafkaClient:
                     self.logger.error(f"{errorMsg}")
             else:
                 value = msg.value()
-                if value is None:
-                    self.logger.warning(
-                        f"Received empty message from topic {msg.topic()}"
+                headers = msg.headers()
+                if value is None or headers is None:
+                    self.logger.error(
+                        f"Received message without value or headers from topic {msg.topic()}"
                     )
                 else:
-                    self.__handle_msg(value)
+                    self.__handle_msg(value, headers)
 
-    def __handle_msg(self, msg_bytes: bytes):
+    def __extractHeaders(self, headers: HeadersType) -> tuple[str | None, str | None]:
+        correlation_id: str | None = None
+        reply_topic: str | None = None
+
+        for key, value in headers:
+            if key == "CorrelationId":
+                correlation_id = self.__getHeaderValue(value)
+            if key == "ReplyTopic":
+                reply_topic = self.__getHeaderValue(value)
+
+        return (correlation_id, reply_topic)
+
+    def __getHeaderValue(self, value: str | bytes | None) -> str | None:
+        if type(value) == bytes:
+            return value.decode("utf-8")
+        elif type(value) == str:
+            return value
+        else:
+            return None
+
+    def __handle_msg(self, msg_bytes: bytes, msg_headers: HeadersType):
         try:
+            correlation_id, reply_topic = self.__extractHeaders(msg_headers)
+            if correlation_id is None or reply_topic is None:
+                self.logger.error(
+                    "Message header CorrelationId or ReplyTopic is missing"
+                )
+                return
+            self.logger.info(f"Received message headers {msg_headers}")
+
             msg_dict = json.loads(msg_bytes)
             logistics_instance: LogisticsInstance = LogisticsInstance.from_dict(
                 msg_dict
@@ -113,7 +153,7 @@ class KafkaClient:
             if logistics_solution is None:
                 self.logger.error("Failed to find solution for given LogisticsInstance")
             else:
-                self.__produce(logistics_solution)
+                self.__produce(logistics_solution, correlation_id, reply_topic)
 
         except Exception as e:  # noqa: BLE001
             self.logger.error(f"Failed to process msg: {e}")

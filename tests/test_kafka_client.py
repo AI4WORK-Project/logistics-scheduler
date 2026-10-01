@@ -6,6 +6,7 @@ import time
 
 import pytest
 from confluent_kafka import Consumer, KafkaError, Producer
+from confluent_kafka._types import HeadersType
 from testcontainers.community.kafka import KafkaContainer
 
 import kafka_client
@@ -43,11 +44,12 @@ def kafka_container(request):
         os.environ["KAFKA_BOOTSTRAP_SERVER"] = bootstrap_server
         os.environ["KAFKA_USERNAME"] = username
         os.environ["KAFKA_PASSWORD"] = password
+        os.environ["KAFKA_TOPIC_LOGISTICS-INSTANCE"] = "logistics-instance"
         yield bootstrap_server, username, password
 
 
 @pytest.fixture(autouse=True)
-def kafka_test_helpers(kafka_container):
+def kafka_test_helpers(kafka_container: tuple[str, str, str]):
     bootstrap_server, username, password = kafka_container
     logger.info(f"bootstrap_server: {bootstrap_server}")
 
@@ -90,7 +92,7 @@ def delivery_callback(err, msg):
         logger.info(f"Sent message to topic {msg.topic()}")
 
 
-def test_kafka_client(kafka_test_helpers):
+def test_kafka_client(kafka_test_helpers: tuple[Consumer, Producer]):
     test_consumer, test_producer = kafka_test_helpers
     test_consumer.subscribe(["logistics-solution"])
 
@@ -107,11 +109,16 @@ def test_kafka_client(kafka_test_helpers):
     test_producer.produce(
         "logistics-instance",
         json.dumps(logistics_instance.to_dict()),
-        callback=delivery_callback,
+        headers=[
+            ("CorrelationId", b"foobar"),
+            ("ReplyTopic", b"logistics-solution"),
+        ],
+        on_delivery=delivery_callback,
     )
     test_producer.flush(5)
 
     logistics_solution: LogisticsSolution | None = None
+    headers: HeadersType | None = None
     # Try polling for up to 10 seconds
     retries = 15
     while retries > 0:
@@ -121,7 +128,8 @@ def test_kafka_client(kafka_test_helpers):
             logger.info("waiting...")
             continue
         if msg.error():
-            if msg.error().code() in (
+            error = msg.error()
+            if error and error.code() in (
                 KafkaError.UNKNOWN_TOPIC_OR_PART,
                 KafkaError._UNKNOWN_TOPIC,
                 KafkaError._UNKNOWN_PARTITION,
@@ -132,9 +140,16 @@ def test_kafka_client(kafka_test_helpers):
             # Fail only on actual unrecoverable errors
             pytest.fail(f"test consumer error: {msg.error()}")
         else:
-            logger.info(f"received logistics solution: {msg.value()}")
-            logistics_solution = LogisticsSolution.from_dict(json.loads(msg.value()))
-            break
+            value = msg.value()
+            if value is None:
+                logger.warning("message contains no value")
+            else:
+                logger.info(
+                    f"received logistics solution: {msg.value()}\nwith headers {msg.headers()}"
+                )
+                logistics_solution = LogisticsSolution.from_dict(json.loads(value))
+                headers = msg.headers()
+                break
 
     client.stop()
     client_thread.join(5.0)
@@ -142,3 +157,4 @@ def test_kafka_client(kafka_test_helpers):
     assert logistics_solution is not None, (
         "Did not receive a LogisticsSolution from KafkaClient."
     )
+    assert headers is not None, "Did not receive message headers with CorrelationId"
