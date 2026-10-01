@@ -16,6 +16,7 @@ COPY LICENSE NOTICE /app/
 COPY logistics/ /app/logistics/
 RUN pip install --no-deps /app/
 COPY server.py /app/
+COPY kafka_client.py /app/
 
 # Expose the port of the server
 EXPOSE 5000
