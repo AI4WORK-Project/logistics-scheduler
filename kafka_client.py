@@ -23,23 +23,32 @@ class KafkaClient:
 
         self.logger = logging.getLogger("kafka-client")
 
-        bootstrap_server = os.environ["KAFKA_BOOTSTRAP_SERVER"]
+        bootstrap_server = os.getenv("KAFKA_BOOTSTRAP_SERVER")
+        if bootstrap_server is None:
+            raise Exception("KAFKA_BOOTSTRAP_SERVER is required.")  # noqa: TRY002
+        consumer_topic = os.getenv("KAFKA_TOPIC_LOGISTICS-INSTANCE")
+        if consumer_topic is None:
+            raise Exception("KAFKA_TOPIC_LOGISTICS-INSTANCE is required.")  # noqa: TRY002
+
         self.logger.info(f"Kafka bootstrap servers: {bootstrap_server}")
 
-        username = os.environ["KAFKA_USERNAME"]
-        password = os.environ["KAFKA_PASSWORD"]
-        sasl_config = {
-            "security.protocol": "SASL_PLAINTEXT",
-            "sasl.mechanism": "PLAIN",
-            "sasl.username": username,
-            "sasl.password": password,
-        }
+        sasl_config = None
+        username = os.getenv("KAFKA_USERNAME")
+        password = os.getenv("KAFKA_PASSWORD")
+        if username is not None and password is not None:
+            sasl_config = {
+                "security.protocol": "SASL_PLAINTEXT",
+                "sasl.mechanism": "PLAIN",
+                "sasl.username": username,
+                "sasl.password": password,
+            }
 
         producer_config = {
             "bootstrap.servers": bootstrap_server,
             "acks": "all",
         }
-        producer_config.update(sasl_config)
+        if sasl_config is not None:
+            producer_config.update(sasl_config)
         self.producer = Producer(producer_config)
 
         consumer_config = {
@@ -47,8 +56,9 @@ class KafkaClient:
             "group.id": "logistics-scheduler",
             "auto.offset.reset": "earliest",
         }
-        consumer_config.update(sasl_config)
-        self.consumer_topic = os.environ["KAFKA_TOPIC_LOGISTICS-INSTANCE"]
+        if sasl_config is not None:
+            consumer_config.update(sasl_config)
+        self.consumer_topic = consumer_topic
         self.consumer = Consumer(consumer_config)
         self.consuming = False
 
