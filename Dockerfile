@@ -4,6 +4,14 @@ LABEL org.opencontainers.image.source="https://github.com/AI4WORK-Project/logist
       org.opencontainers.image.description="Human-Aware Task Planner – Logistics Yard Management" \
       org.opencontainers.image.licenses="EPL-2.0"
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \ 
+  && apt-get -y install --no-install-recommends netcat-openbsd \
+  && apt-get autoremove -y \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=dialog
+
 WORKDIR /app
 
 # Install the dependencies first, so that changing only the code does not
