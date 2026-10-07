@@ -1,13 +1,22 @@
 FROM python:3.10-slim
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update \ 
+  && apt-get -y install --no-install-recommends netcat-openbsd \
+  && apt-get autoremove -y \
+  && apt-get clean -y \
+  && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=dialog
+
 WORKDIR /app
 
+# Install the logistics package and dependencies
 COPY pyproject.toml /app/
+RUN pip install /app/
+
 COPY logistics/ /app/logistics/
 COPY server.py /app/
-
-# Install the logistics package and dependencies
-RUN pip install /app/
+COPY kafka_client.py /app/
 
 # Expose the port of the server
 EXPOSE 5000
