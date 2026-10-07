@@ -10,13 +10,13 @@ ENV DEBIAN_FRONTEND=dialog
 
 WORKDIR /app
 
+# Install the logistics package and dependencies
 COPY pyproject.toml /app/
+RUN pip install /app/
+
 COPY logistics/ /app/logistics/
 COPY server.py /app/
 COPY kafka_client.py /app/
-
-# Install the logistics package and dependencies
-RUN pip install /app/
 
 # Expose the port of the server
 EXPOSE 5000
