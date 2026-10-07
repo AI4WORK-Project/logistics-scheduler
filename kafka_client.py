@@ -26,9 +26,9 @@ class KafkaClient:
         bootstrap_server = os.getenv("KAFKA_BOOTSTRAP_SERVER")
         if bootstrap_server is None:
             raise Exception("KAFKA_BOOTSTRAP_SERVER is required.")  # noqa: TRY002
-        consumer_topic = os.getenv("KAFKA_TOPIC_LOGISTICS-INSTANCE")
+        consumer_topic = os.getenv("KAFKA_TOPIC_LOGISTICS_INSTANCE")
         if consumer_topic is None:
-            raise Exception("KAFKA_TOPIC_LOGISTICS-INSTANCE is required.")  # noqa: TRY002
+            raise Exception("KAFKA_TOPIC_LOGISTICS_INSTANCE is required.")  # noqa: TRY002
 
         self.logger.info(f"Kafka bootstrap servers: {bootstrap_server}")
 

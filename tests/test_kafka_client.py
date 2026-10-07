@@ -44,7 +44,7 @@ def kafka_container(request):
         os.environ["KAFKA_BOOTSTRAP_SERVER"] = bootstrap_server
         os.environ["KAFKA_USERNAME"] = username
         os.environ["KAFKA_PASSWORD"] = password
-        os.environ["KAFKA_TOPIC_LOGISTICS-INSTANCE"] = "logistics-instance"
+        os.environ["KAFKA_TOPIC_LOGISTICS_INSTANCE"] = "logistics-instance"
         yield bootstrap_server, username, password
 
 
