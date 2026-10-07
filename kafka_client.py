@@ -5,6 +5,7 @@ import signal
 
 from confluent_kafka import Consumer, KafkaError, Producer
 from confluent_kafka._types import HeadersType
+from confluent_kafka.admin._metadata import ClusterMetadata
 
 from logistics.factory import LogisticsSchedulingFactory
 from logistics.instance import LogisticsInstance
@@ -54,6 +55,7 @@ class KafkaClient:
         consumer_config = {
             "bootstrap.servers": bootstrap_server,
             "group.id": "logistics-scheduler",
+            "allow.auto.create.topics": "true",
             "auto.offset.reset": "earliest",
         }
         if sasl_config is not None:
@@ -61,6 +63,16 @@ class KafkaClient:
         self.consumer_topic = consumer_topic
         self.consumer = Consumer(consumer_config)
         self.consuming = False
+
+        self.logger.info(f"Checking if topic {self.consumer_topic} exists")
+        meta_data: ClusterMetadata = self.consumer.list_topics(self.consumer_topic)
+        if (
+            meta_data.topics is None
+            or meta_data.topics.get(self.consumer_topic) is None
+        ):
+            self.logger.info(f"Topic {self.consumer_topic} not found")
+        else:
+            self.logger.info(f"Topic {meta_data.topics.get(self.consumer_topic)} found")
 
     def __handle_signal(self, signum: int, frame):
         self.logger.info(f"Received shutdown signal {signum}")

@@ -27,6 +27,7 @@ def kafka_container(request):
             security_protocol="SASL_PLAINTEXT",
         )
         .with_env("KAFKA_SASL_ENABLED_MECHANISMS", "PLAIN")
+        .with_env("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "true")
         .with_env(
             "KAFKA_OPTS",
             "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf",
@@ -62,6 +63,7 @@ def kafka_test_helpers(kafka_container: tuple[str, str, str]):
     test_consumer_config = {
         "bootstrap.servers": bootstrap_server,
         "group.id": "test-verifier-group",
+        "allow.auto.create.topics": "true",
         "auto.offset.reset": "earliest",
     }
     test_consumer_config.update(sasl_config)
@@ -94,6 +96,7 @@ def delivery_callback(err, msg):
 
 def test_kafka_client(kafka_test_helpers: tuple[Consumer, Producer]):
     test_consumer, test_producer = kafka_test_helpers
+    test_consumer.list_topics("logistics-solution")
     test_consumer.subscribe(["logistics-solution"])
 
     client = kafka_client.KafkaClient()
