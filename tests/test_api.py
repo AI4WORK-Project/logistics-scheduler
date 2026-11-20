@@ -12,6 +12,7 @@ import server
 
 URL = "http://0.0.0.0:5000/schedule"
 HEALTH_URL = "http://0.0.0.0:5000/health"
+GANTT_URL = "http://0.0.0.0:5000/last_schedule_gantt"
 INSTANCES_PATH = os.path.join(pathlib.Path(__file__).parent.resolve(), "instances")
 
 logger = logging.getLogger("test_api")
@@ -90,3 +91,8 @@ def test_valid_instance():
     response = requests.post(URL, params={"time_limit": 10 * 60}, json=instance)
     assert response.status_code == 200
     logger.info(f"{response.json()}")
+
+    response = requests.get(GANTT_URL)
+    assert response.status_code == 200
+    assert response.headers["Content-Type"].startswith("text/html")
+    assert "<svg" in response.text

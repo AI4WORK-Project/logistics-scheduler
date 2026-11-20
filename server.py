@@ -1,15 +1,18 @@
 import logging
+import threading
 from importlib.metadata import PackageNotFoundError, version
 
 import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
 from apiflask.fields import String
+from flask import Response
 from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
 
 from logistics.factory import LogisticsSchedulingFactory
 from logistics.instance import LogisticsInstance
-from logistics.solution import LogisticsSolution
+from logistics.solution import LogisticsSolution, TruckScheduleSolution
+from logistics.visualize import solution_html
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +44,30 @@ LogisticsInstanceSchema: marshmallow.schema.SchemaMeta = class_schema(
 LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
     LogisticsSolution, base_schema=Schema
 )
+
+
+class LastScheduleGantt:
+    """HTML visualization of the last computed schedule, kept in memory."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._html = None
+
+    def update(self, truck_schedule_solution: TruckScheduleSolution):
+        try:
+            html = solution_html(truck_schedule_solution)
+        except Exception:
+            logger.warning("Could not visualize the schedule", exc_info=True)
+            html = None
+        with self._lock:
+            self._html = html
+
+    def get(self):
+        with self._lock:
+            return self._html
+
+
+last_schedule_gantt_html = LastScheduleGantt()
 
 
 class HealthSchema(Schema):
@@ -102,7 +129,27 @@ def schedule(query_data, json_data):
         raise HTTPError(status_code=400, message=message)
 
     logger.info("Solution found")
+    last_schedule_gantt_html.update(factory.truck_schedule_solution)
     return solution.to_dict(), 200
+
+
+@app.get("/last_schedule_gantt")
+@app.doc(
+    summary="Visualize the last computed schedule",
+    description="HTML chart of the orders scheduled at each exchange point over "
+    "time, with their material and truck, in the last schedule computed by "
+    "/schedule.",
+    responses={
+        200: {"description": "HTML visualization", "content": {"text/html": {}}},
+        404: "No schedule has been computed yet",
+    },
+)
+def last_schedule_gantt():
+    logger.info("Received request for the last generated schedule plot html.")
+    html = last_schedule_gantt_html.get()
+    if html is None:
+        return {"message": "Gantt html not found"}, 404
+    return Response(html, mimetype="text/html")
 
 
 def start():
