@@ -6,6 +6,7 @@ import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
 from apiflask.fields import String
 from flask import Response
+from flask_cors import CORS
 from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
 
@@ -31,6 +32,7 @@ app = APIFlask(
     version=__version__,
 )
 app.openapi_version = "3.0.2"
+CORS(app)
 
 
 class QueryParamsSchema(BaseModel):
