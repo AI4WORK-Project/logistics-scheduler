@@ -99,6 +99,7 @@ curl "http://localhost:5000/last_schedule_gantt" > schedule.html
 The [examples](examples) folder also contains:
 
 - [client_example.py](examples/client_example.py): sends a request to the server and prints the response;
+- [client_example_with_visualization.py](examples/client_example_with_visualization.py): sends a request and opens the visualization of the schedule;
 - [example.py](examples/example.py): solves an instance using the `logistics` package directly, without the server, and plots the schedule.
 
 ## Development
