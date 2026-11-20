@@ -30,13 +30,13 @@ def plot_solution(solution: TruckScheduleSolution):
         [2 + 6 * i for i in range(len(exchange_point_ids))], exchange_point_ids
     )
 
-    cmap = cm.get_cmap("tab10")
+    cmap = plt.get_cmap("tab10")
     truck_color = {}
     for order in solution.delivery_orders + solution.pickup_orders:
         if order.truck_id not in truck_color:
             truck_color[order.truck_id] = cmap(len(truck_color))
 
-    cmap = cm.get_cmap("Pastel1")
+    cmap = plt.get_cmap("Pastel1")
     material_color = {}
     for order in solution.delivery_orders + solution.pickup_orders:
         m = order.material
