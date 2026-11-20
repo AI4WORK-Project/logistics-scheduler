@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pathlib
+import socket
 import threading
 import time
 
@@ -21,10 +22,22 @@ logger = logging.getLogger("test_api")
 @pytest.fixture(scope="module", autouse=True)
 def start_server(request):
     logger.info("[Setup] starting server...")
+    # do not run the tests against another server already listening on the port
+    with socket.socket() as s:
+        assert s.connect_ex(("127.0.0.1", 5000)) != 0, "Port 5000 is already in use"
     server_thread = threading.Thread(target=server.start, daemon=True)
     server_thread.start()
 
-    time.sleep(1)
+    # wait until the server answers, failing if it could not start
+    deadline = time.monotonic() + 30
+    while True:
+        assert server_thread.is_alive(), "The server could not start"
+        try:
+            requests.get(HEALTH_URL, timeout=1).raise_for_status()
+            break
+        except requests.RequestException:
+            assert time.monotonic() < deadline, "The server did not start in time"
+            time.sleep(0.2)
 
     # yield control to the test suite
     yield

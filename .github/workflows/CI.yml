@@ -32,6 +32,13 @@ jobs:
       - name: Run all tests
         run: |
           python -m pytest ./tests/*
+      - name: Client example test
+        run: |
+          python server.py &
+          SERVER_PID=$!
+          timeout 60 bash -c 'until curl -sf http://localhost:5000/health; do sleep 1; done'
+          python examples/client_example.py
+          kill $SERVER_PID
       - name: Log in to registry
         if: github.event_name == 'push'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
