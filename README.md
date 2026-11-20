@@ -1,54 +1,126 @@
-# Logistics Scheduler
+# Human-Aware Task Planner – Logistics Yard Management
 
-This repository contains the `logistics` Python package and the REST API server (`server.py`). The application is containerized using Docker.
+Repository: `logistics-scheduler`
 
-## Building the Docker Image
-To build the Docker image, run:
+The Logistics Yard Management variant of the AI4Work Human-Aware Task Planner computes the sequence in which the trucks waiting in the parking lot enter the logistics yard, and the exchange point where each truck delivers or picks up its material.
+It is exposed as a REST service (`server.py`) on top of the `logistics` Python package, and it is distributed as a Docker image.
+
+The schedule satisfies hard constraints and optimizes the waiting times of the drivers:
+
+- **Hard constraints**: each exchange point serves one truck at a time, after the orders currently in progress; each truck is served at an exchange point that stores its material (or at the one it requires); the stock of each material at each exchange point stays between zero and its capacity.
+- **Human-aware objective**: the completion time of each truck is minimized, weighted by the time the truck has already been waiting, so that trucks waiting longer are prioritized. This reduces waiting and idle times, improves the yard throughput and ensures fairness among drivers.
+
+The optimization model is solved with the OR-Tools CP-SAT solver.
+
+## Quick start
+
+Run the published Docker image:
+
+```sh
+docker run -p 5000:5000 ghcr.io/ai4work-project/logistics-scheduler:latest
+```
+
+Or build the image from source:
 
 ```sh
 docker build -t logistics-scheduler .
-```
-
-## Running the Container
-To run the container and expose the application on port 5000, execute:
-
-```sh
 docker run -p 5000:5000 logistics-scheduler
 ```
 
-## Accessing the Application
-Once the container is running, you can access the application at:
+Or install the package and run the server directly (Python 3.10 or later; the image and CI use 3.12):
 
-```
-http://0.0.0.0:5000
+```sh
+pip install .
+python server.py
 ```
 
-## Calling the API
+The service listens on port 5000. The interactive API documentation is available at <http://localhost:5000/docs>.
+
+## API
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/schedule` | Computes the truck entrance sequence for the given yard state |
+| `GET` | `/last_schedule_gantt` | HTML visualization of the last computed schedule |
+| `GET` | `/health` | Health check |
+| `GET` | `/docs` | Interactive API documentation (Swagger UI) |
+| `GET` | `/openapi.json` | OpenAPI specification |
 
 ### POST `/schedule`
 
-This endpoint accepts a JSON payload representing a scheduling problem and returns the solution.
+Computes the truck entrance sequence for the yard state described by the JSON request body.
 
-#### Request Parameters
-- `time_limit`: (Optional, int) The time limit in seconds for the solver. If not provided, the solver will run without a time constraint.
+#### Query parameters
 
-#### Response
-- **Success (200)**: If a solution is found, the response will contain a JSON object representing the solution.
+- `time_limit` (**required**, int > 0): time limit in seconds for the solver.
 
-- **Error (400)**: If no solution is found for the given problem, a message will be returned indicating that no solution was found.
+#### Request body
 
-- **Error (500)**: If an internal server error occurs, an error message will be returned.
+A JSON object describing the yard state: the exchange points with their materials and stock levels (`warehouse`), the trucks waiting in the parking lot with their delivery or pickup order (`trucks`), and the orders in progress at the exchange points (`ongoing_orders`).
+See:
 
-## Running an example
-To test the API, you can run the `client_example.py` script:
+- [instance1_description.md](examples/instances/instance1_description.md): description of the input and output fields;
+- [instance1.json](examples/instances/instance1.json) and [instance1_annotated.json](examples/instances/instance1_annotated.json): example request;
+- [schema.json](examples/instances/schema.json): JSON schema of the request.
+
+The request is validated against the OpenAPI schema: unknown fields are rejected.
+
+#### Responses
+
+- **200**: the sequence in which the trucks enter the yard, each with its assigned exchange point (`truck_entrance_order`). See [instance1_solution.json](examples/instances/instance1_solution.json) and [instance1_solution_annotated.json](examples/instances/instance1_solution_annotated.json).
+- **400**: no solution has been found: `{"message": "No solution has been found for the given problem", "detail": {}}`.
+- **422**: the input or the query parameters are not valid: `{"message": "Validation error", "detail": ...}`.
+- **500**: internal server error: `{"message": "<reason>", "detail": {}}`.
+
+### GET `/last_schedule_gantt`
+
+Returns an HTML chart of the last schedule computed by `/schedule`: the orders scheduled at each exchange point over time, with their material and truck.
+
+- **200**: the HTML page, to be viewed in a browser.
+- **404**: no schedule has been computed yet: `{"message": "Gantt html not found"}`.
+
+### GET `/health`
+
+Returns `{"status": "healthy", "version": "<version>"}` if the service is up and reachable.
+The Docker image uses it as its `HEALTHCHECK`.
+
+## Examples
+
+With the server running:
 
 ```sh
-python examples/client_example.py
+# compute a schedule
+curl -X POST --json @examples/instances/instance1.json "http://localhost:5000/schedule?time_limit=60"
+
+# save the visualization of the last schedule and open it in a browser
+curl "http://localhost:5000/last_schedule_gantt" > schedule.html
 ```
 
-This script sends a request to the running server and prints the response.
+The [examples](examples) folder also contains:
 
-Alternatively, you can use `curl`:
+- [client_example.py](examples/client_example.py): sends a request to the server and prints the response;
+- [client_example_with_visualization.py](examples/client_example_with_visualization.py): sends a request and opens the visualization of the schedule;
+- [example.py](examples/example.py): solves an instance using the `logistics` package directly, without the server, and plots the schedule.
+
+The client examples need `requests`: `pip install .[example]`.
+
+## Development
+
 ```sh
-curl -X POST --json @examples/instances/instance1.json "http://0.0.0.0:5000/schedule?time_limit=60"
+pip install .[test]
+python -m pytest tests
 ```
+
+The API tests start the server on port 5000 themselves, so the port must be free.
+
+The CI runs the tests on every pull request. Every push to `main` publishes the Docker image `ghcr.io/ai4work-project/logistics-scheduler:latest`, and every tag `vX.Y.Z` publishes `ghcr.io/ai4work-project/logistics-scheduler:X.Y.Z`.
+
+## License
+
+Copyright (c) 2025-2026 Fondazione Bruno Kessler and other contributors.
+
+This software is distributed under the [Eclipse Public License 2.0](LICENSE) (`EPL-2.0`). See [NOTICE](NOTICE).
+
+## Acknowledgements
+
+This software has been developed within the AI4Work project, which has received funding from the European Union's Horizon Europe research and innovation programme under grant agreement No 101135990.

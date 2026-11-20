@@ -1,16 +1,25 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
+
+LABEL org.opencontainers.image.source="https://github.com/AI4WORK-Project/logistics-scheduler" \
+      org.opencontainers.image.description="Human-Aware Task Planner – Logistics Yard Management" \
+      org.opencontainers.image.licenses="EPL-2.0"
 
 WORKDIR /app
 
+# Install the logistics package and dependencies
 COPY pyproject.toml /app/
+RUN pip install /app/
+
+COPY LICENSE NOTICE /app/
 COPY logistics/ /app/logistics/
 COPY server.py /app/
 
-# Install the logistics package and dependencies
-RUN pip install /app/
-
 # Expose the port of the server
 EXPOSE 5000
+
+# Report the container as unhealthy if the server stops answering
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=4)"
 
 # Run the server
 CMD ["python", "server.py"]
