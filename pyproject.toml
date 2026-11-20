@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "logistics"
 version = "0.1.0"
+description = "Human-Aware Task Planner – Logistics Yard Management"
 dependencies = [
   "ortools==9.14.6206",
   "dataclasses-json==0.6.7",
