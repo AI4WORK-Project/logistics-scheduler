@@ -17,3 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest", "requests"]
 example = ["requests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["logistics*"]
