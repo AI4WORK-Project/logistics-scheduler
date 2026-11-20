@@ -23,7 +23,9 @@ except PackageNotFoundError:
     __version__ = "unknown"
 
 app = APIFlask(
-    "Logistics-Scheduler-API", title="Logistics Scheduler API", version="1.0"
+    "Logistics-Scheduler-API",
+    title="Human-Aware Task Planner – Logistics Yard Management",
+    version=__version__,
 )
 app.openapi_version = "3.0.2"
 
