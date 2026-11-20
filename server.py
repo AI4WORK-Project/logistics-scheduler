@@ -1,7 +1,9 @@
 import logging
+from importlib.metadata import PackageNotFoundError, version
 
 import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
+from apiflask.fields import String
 from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
 
@@ -14,6 +16,11 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
 )
 logger = logging.getLogger("logistics-scheduler-server")
+
+try:
+    __version__ = version("logistics")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 app = APIFlask(
     "Logistics-Scheduler-API", title="Logistics Scheduler API", version="1.0"
@@ -32,6 +39,19 @@ LogisticsInstanceSchema: marshmallow.schema.SchemaMeta = class_schema(
 LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
     LogisticsSolution, base_schema=Schema
 )
+
+
+class HealthSchema(Schema):
+    status = String(metadata={"example": "healthy"})
+    version = String(metadata={"example": __version__})
+
+
+@app.get("/health")
+@app.output(HealthSchema)
+@app.doc(summary="Check if the service is alive and reachable")
+def health_check():
+    logger.debug("Health check pinged.")
+    return {"status": "healthy", "version": __version__}
 
 
 @app.errorhandler(AssertionError)
