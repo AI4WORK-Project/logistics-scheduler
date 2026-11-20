@@ -6,6 +6,7 @@ WORKDIR /app
 COPY pyproject.toml /app/
 RUN pip install /app/
 
+COPY LICENSE NOTICE /app/
 COPY logistics/ /app/logistics/
 COPY server.py /app/
 
