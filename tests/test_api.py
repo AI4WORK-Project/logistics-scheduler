@@ -66,6 +66,18 @@ def test_invalid_instance():
     logger.info(f"{response.json()}")
 
 
+def test_malformed_json():
+    response = requests.post(
+        URL,
+        params={"time_limit": 10 * 60},
+        data='{"warehouse": [',
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert response.json()["message"] == "Validation error"
+    assert response.json()["detail"]["json"][0].startswith("Invalid JSON")
+
+
 def test_missing_query_param():
     instance = load_instance_json("instance0.json")
     response = requests.post(URL, json=instance)

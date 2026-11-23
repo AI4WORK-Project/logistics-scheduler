@@ -69,7 +69,7 @@ The request is validated against the OpenAPI schema: unknown fields are rejected
 
 - **200**: the sequence in which the trucks enter the yard, each with its assigned exchange point (`truck_entrance_order`). See [instance1_solution.json](examples/instances/instance1_solution.json) and [instance1_solution_annotated.json](examples/instances/instance1_solution_annotated.json).
 - **400**: no solution has been found: `{"message": "No solution has been found for the given problem", "detail": {}}`.
-- **422**: the input or the query parameters are not valid: `{"message": "Validation error", "detail": ...}`.
+- **422**: the input or the query parameters are not valid, including a body that is not valid JSON: `{"message": "Validation error", "detail": ...}`.
 - **500**: internal server error: `{"message": "<reason>", "detail": {}}`.
 
 ### GET `/last_schedule_gantt`

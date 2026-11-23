@@ -1,3 +1,4 @@
+import json
 import logging
 import threading
 from importlib.metadata import PackageNotFoundError, version
@@ -9,6 +10,7 @@ from flask import Response
 from flask_cors import CORS
 from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
+from werkzeug.exceptions import BadRequest
 
 from logistics.factory import LogisticsSchedulingFactory
 from logistics.instance import LogisticsInstance
@@ -93,6 +95,18 @@ def validation_error(error):
         "message": "Validation error",
         "detail": message,
     }, 422
+
+
+@app.errorhandler(BadRequest)
+def bad_request(error: BadRequest):
+    # the request parser attaches the decoding error to the 400 it raises for a
+    # body that is not valid JSON: report it as invalid input, as documented
+    decoding_error = getattr(error, "exc", None)
+    if isinstance(decoding_error, (json.JSONDecodeError, UnicodeDecodeError)):
+        message = f"Invalid JSON: {decoding_error}"
+        logger.error(f"Validation: {message}")
+        return {"message": "Validation error", "detail": {"json": [message]}}, 422
+    return app.error_callback(HTTPError(400, message=error.name))
 
 
 @app.post("/schedule")
