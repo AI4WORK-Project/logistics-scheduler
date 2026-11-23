@@ -6,12 +6,15 @@ LABEL org.opencontainers.image.source="https://github.com/AI4WORK-Project/logist
 
 WORKDIR /app
 
-# Install the logistics package and dependencies
+# Install the dependencies first, so that changing only the code does not
+# reinstall them
 COPY pyproject.toml /app/
 RUN pip install /app/
 
+# Install the logistics package
 COPY LICENSE NOTICE /app/
 COPY logistics/ /app/logistics/
+RUN pip install --no-deps /app/
 COPY server.py /app/
 
 # Expose the port of the server
