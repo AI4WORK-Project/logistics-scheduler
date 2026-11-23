@@ -51,27 +51,35 @@ LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
 
 
 class LastScheduleGantt:
-    """HTML visualization of the last computed schedule, kept in memory."""
+    """Last computed schedule, kept in memory and rendered as an HTML page
+    only when it is requested."""
 
-    def __init__(self):
+    def __init__(self, render):
+        self._render = render
         self._lock = threading.Lock()
+        self._schedule = None
         self._html = None
 
-    def update(self, truck_schedule_solution: TruckScheduleSolution):
-        try:
-            html = solution_html(truck_schedule_solution)
-        except Exception:
-            logger.warning("Could not visualize the schedule", exc_info=True)
-            html = None
+    def update(self, *schedule):
         with self._lock:
-            self._html = html
+            self._schedule = schedule
+            self._html = None
 
-    def get(self):
+    def html(self) -> str | None:
+        """Return the HTML page, None if no schedule has been computed yet.
+
+        Raise the rendering error if the page cannot be rendered."""
         with self._lock:
+            if self._html is None and self._schedule is not None:
+                self._html = self._render(*self._schedule)
             return self._html
 
 
-last_schedule_gantt_html = LastScheduleGantt()
+def render_schedule(truck_schedule_solution: TruckScheduleSolution) -> str:
+    return solution_html(truck_schedule_solution)
+
+
+last_schedule_gantt_html = LastScheduleGantt(render_schedule)
 
 
 class HealthSchema(Schema):
@@ -158,11 +166,16 @@ def schedule(query_data, json_data):
     responses={
         200: {"description": "HTML visualization", "content": {"text/html": {}}},
         404: "No schedule has been computed yet",
+        500: "The last schedule could not be visualized",
     },
 )
 def last_schedule_gantt():
     logger.info("Received request for the last generated schedule plot html.")
-    html = last_schedule_gantt_html.get()
+    try:
+        html = last_schedule_gantt_html.html()
+    except Exception:
+        logger.exception("Could not visualize the last schedule")
+        return {"message": "The last schedule could not be visualized"}, 500
     if html is None:
         return {"message": "Gantt html not found"}, 404
     return Response(html, mimetype="text/html")
