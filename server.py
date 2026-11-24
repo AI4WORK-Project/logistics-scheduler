@@ -3,19 +3,18 @@ import logging
 import threading
 from importlib.metadata import PackageNotFoundError, version
 
-import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
 from apiflask.fields import String
 from flask import Response
 from flask_cors import CORS
-from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
-from logistics.factory import LogisticsSchedulingFactory
+import service
 from logistics.instance import LogisticsInstance
-from logistics.solution import LogisticsSolution, TruckScheduleSolution
+from logistics.solution import TruckScheduleSolution
 from logistics.visualize import solution_html
+from service import LogisticsInstanceSchema, LogisticsSolutionSchema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,15 +38,6 @@ CORS(app)
 
 class QueryParamsSchema(BaseModel):
     time_limit: int = Field(gt=0)
-
-
-# generate the schema classes
-LogisticsInstanceSchema: marshmallow.schema.SchemaMeta = class_schema(
-    LogisticsInstance, base_schema=Schema
-)
-LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
-    LogisticsSolution, base_schema=Schema
-)
 
 
 class LastScheduleGantt:
@@ -129,32 +119,17 @@ def bad_request(error: BadRequest):
         500: "Internal server error",
     },
 )
-def schedule(query_data, json_data):
-    try:
-        time_limit = query_data.time_limit
-        logger.info(f"Time limit: {time_limit}")
+def schedule(query_data, json_data: LogisticsInstance):
+    time_limit = query_data.time_limit
+    logger.info(f"Time limit: {time_limit}")
 
-        instance: LogisticsInstance = LogisticsInstance.from_dict(json_data)
-        logger.info("LogisticsInstance created")
+    # the body has already been validated against LogisticsInstanceSchema
+    result = service.solve(json_data, time_limit)
+    if result.status != 200:
+        raise HTTPError(status_code=result.status, message=result.body["message"])
 
-        factory = LogisticsSchedulingFactory(instance)
-        logger.info("LogisticsSchedulingFactory created")
-
-        solution: LogisticsSolution | None = factory.get_solution(time_limit=time_limit)
-
-    except Exception as e:  # noqa: BLE001
-        message = str(e)
-        logger.error(message)
-        raise HTTPError(status_code=500, message=message)
-
-    if solution is None:
-        message = "No solution has been found for the given problem"
-        logger.error(message)
-        raise HTTPError(status_code=400, message=message)
-
-    logger.info("Solution found")
-    last_schedule_gantt_html.update(factory.truck_schedule_solution)
-    return solution.to_dict(), 200
+    last_schedule_gantt_html.update(result.truck_schedule_solution)
+    return result.body, 200
 
 
 @app.get("/last_schedule_gantt")
