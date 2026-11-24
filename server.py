@@ -160,7 +160,7 @@ def schedule(query_data, json_data: LogisticsInstance):
     summary="Visualize the last computed schedule",
     description="HTML chart of the orders scheduled at each exchange point over "
     "time, with their material and truck, in the last schedule computed by "
-    "/schedule.",
+    "/schedule or for a Kafka request.",
     responses={
         200: {"description": "HTML visualization", "content": {"text/html": {}}},
         404: "No schedule has been computed yet",
