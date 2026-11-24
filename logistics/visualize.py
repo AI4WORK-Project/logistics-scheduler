@@ -1,11 +1,16 @@
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import collections
-from logistics import LogisticsSolution
+import io
+
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+
+from logistics.solution import TruckScheduleSolution
 
 
-def plot_solution(solution: LogisticsSolution):
-    fig, ax = plt.subplots()
+def draw_solution(ax: Axes, solution: TruckScheduleSolution):
+    """Draws the orders at each exchange point over time: for each order, the
+    lower bar shows the material and the upper bar the truck."""
     ax.set_xlabel("Time")
     ax.set_ylabel("Exchange Point")
     ax.grid(True)
@@ -23,23 +28,23 @@ def plot_solution(solution: LogisticsSolution):
             pickup_order
         )
 
-    exchange_point_ids = sorted(list(exchange_point_orders.keys()))
+    exchange_point_ids = sorted(exchange_point_orders.keys())
     ax.set_yticks(
         [2 + 6 * i for i in range(len(exchange_point_ids))], exchange_point_ids
     )
 
-    cmap = cm.get_cmap("tab10")
+    cmap = plt.get_cmap("tab10")
     truck_color = {}
     for order in solution.delivery_orders + solution.pickup_orders:
         if order.truck_id not in truck_color:
-            truck_color[order.truck_id] = cmap(len(truck_color))
+            truck_color[order.truck_id] = cmap(len(truck_color) % cmap.N)
 
-    cmap = cm.get_cmap("Pastel1")
+    cmap = plt.get_cmap("Pastel1")
     material_color = {}
     for order in solution.delivery_orders + solution.pickup_orders:
         m = order.material
         if m not in material_color:
-            material_color[m] = cmap(len(material_color))
+            material_color[m] = cmap(len(material_color) % cmap.N)
 
     y = 0
     dy = 2
@@ -79,4 +84,28 @@ def plot_solution(solution: LogisticsSolution):
             y += dy
         y += dy
 
+
+def solution_html(solution: TruckScheduleSolution) -> str:
+    """The chart of draw_solution as a standalone HTML page with an SVG image.
+    It does not use pyplot, so it can be called from several threads."""
+    exchange_points = {
+        o.exchange_point for o in solution.delivery_orders + solution.pickup_orders
+    }
+    fig = Figure(figsize=(12, 1.5 + 1.2 * max(len(exchange_points), 1)))
+    draw_solution(fig.subplots(), solution)
+    fig.tight_layout()
+    svg = io.StringIO()
+    fig.savefig(svg, format="svg")
+    # drop the XML declaration and DOCTYPE of the SVG document
+    svg_element = svg.getvalue()[svg.getvalue().index("<svg") :]
+    return (
+        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n"
+        "<title>Logistics Yard Management schedule</title>\n</head>\n<body>\n"
+        f"{svg_element}\n</body>\n</html>\n"
+    )
+
+
+def plot_solution(solution: TruckScheduleSolution):
+    _fig, ax = plt.subplots()
+    draw_solution(ax, solution)
     plt.show()

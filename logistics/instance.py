@@ -1,16 +1,15 @@
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from typing import List, Optional
+
+from dataclasses_json import DataClassJsonMixin
 
 
-@dataclass_json
 @dataclass
-class DeliveryPickupOrder:
+class DeliveryPickupOrder(DataClassJsonMixin):
     is_delivery: bool
     material: str
     quantity: int
     duration: int
-    exchange_point: Optional[str] = None
+    exchange_point: str | None = None
 
     def __post_init__(self):
         self.validate()
@@ -20,9 +19,8 @@ class DeliveryPickupOrder:
         assert self.duration > 0, "Order duration must be positive."
 
 
-@dataclass_json
 @dataclass
-class Truck:
+class Truck(DataClassJsonMixin):
     id: str
     waiting_time: int
     order: DeliveryPickupOrder
@@ -34,9 +32,8 @@ class Truck:
         assert self.waiting_time >= 0, "Truck waiting time cannot be negative."
 
 
-@dataclass_json
 @dataclass
-class MaterialSite:
+class MaterialSite(DataClassJsonMixin):
     material: str
     stock_level: int
     stock_capacity: int
@@ -52,24 +49,22 @@ class MaterialSite:
         )
 
 
-@dataclass_json
 @dataclass
-class ExchangePoint:
+class ExchangePoint(DataClassJsonMixin):
     exchange_point: str
-    materials: List[MaterialSite]
+    materials: list[MaterialSite]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        assert len(set(m.material for m in self.materials)) == len(self.materials), (
+        assert len({m.material for m in self.materials}) == len(self.materials), (
             f"Duplicate materials found in exchange point '{self.exchange_point}'."
         )
 
 
-@dataclass_json
 @dataclass
-class OngoingOrder:
+class OngoingOrder(DataClassJsonMixin):
     exchange_point: str
     remaining_duration: int
 
@@ -80,27 +75,26 @@ class OngoingOrder:
         assert self.remaining_duration > 0, "Remaining duration must be positive."
 
 
-@dataclass_json
 @dataclass
-class LogisticsInstance:
-    warehouse: List[ExchangePoint]
-    trucks: List[Truck]
-    ongoing_orders: List[OngoingOrder]
+class LogisticsInstance(DataClassJsonMixin):
+    warehouse: list[ExchangePoint]
+    trucks: list[Truck]
+    ongoing_orders: list[OngoingOrder]
 
     def __post_init__(self):
         self.validate()
 
     def validate(self):
-        exchange_points = set(ep.exchange_point for ep in self.warehouse)
+        exchange_points = {ep.exchange_point for ep in self.warehouse}
         assert len(exchange_points) == len(self.warehouse), (
             "Duplicate exchange points found."
         )
 
-        assert len(set(t.id for t in self.trucks)) == len(self.trucks), (
+        assert len({t.id for t in self.trucks}) == len(self.trucks), (
             "Duplicate trucks found."
         )
 
-        materials = set(m.material for ep in self.warehouse for m in ep.materials)
+        materials = {m.material for ep in self.warehouse for m in ep.materials}
         for t in self.trucks:
             assert t.order.material in materials, (
                 f"Truck '{t.id}' has an order with material '{t.order.material}', but this material does not exist in the warehouse."
@@ -108,9 +102,9 @@ class LogisticsInstance:
 
         exchange_point_to_materials = {}
         for ep in self.warehouse:
-            exchange_point_to_materials[ep.exchange_point] = set(
+            exchange_point_to_materials[ep.exchange_point] = {
                 m.material for m in ep.materials
-            )
+            }
 
         for t in self.trucks:
             if t.order.exchange_point is not None:
@@ -130,6 +124,6 @@ class LogisticsInstance:
                 f"The exchange point '{order.exchange_point}' does not exist."
             )
 
-        assert len(set(o.exchange_point for o in self.ongoing_orders)) == len(
+        assert len({o.exchange_point for o in self.ongoing_orders}) == len(
             self.ongoing_orders
         ), "Duplicate exchange points found in ongoing orders."

@@ -1,19 +1,28 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "logistics"
 version = "0.1.0"
+description = "Human-Aware Task Planner – Logistics Yard Management"
+license = "EPL-2.0"
+requires-python = ">=3.10"
 dependencies = [
   "ortools==9.14.6206",
   "dataclasses-json==0.6.7",
   "marshmallow_dataclass==8.7.1",
   "apiflask==3.1.0",
+  "pydantic==2.14.4",
   "waitress==3.0.2",
+  "flask-cors==6.0.2",
   "matplotlib==3.10.6",
 ]
 
 [project.optional-dependencies]
 test = ["pytest", "requests"]
 example = ["requests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["logistics*"]
