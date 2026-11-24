@@ -18,11 +18,10 @@ dependencies = [
   "flask-cors==6.0.2",
   "matplotlib==3.10.6",
   "confluent-kafka==2.15.1",
-  "testcontainers==4.15.0",
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "requests", "testcontainers"]
+test = ["pytest", "requests", "testcontainers==4.15.0"]
 example = ["requests"]
 
 [tool.setuptools.packages.find]

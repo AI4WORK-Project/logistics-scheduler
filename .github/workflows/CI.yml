@@ -46,4 +46,7 @@ jobs:
         if: github.event_name == 'push'
         run: |
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && IMAGE_VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,' | sed -e 's/^v//') || IMAGE_VERSION="latest"
-          docker buildx build . --push --file ./Dockerfile --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler:$IMAGE_VERSION
+          # the image is also published as logistics-scheduler-kafka, the name used by Pilot-Logistics
+          docker buildx build . --push --file ./Dockerfile \
+            --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler:$IMAGE_VERSION \
+            --tag ${{ env.REGISTRY }}/ai4work-project/logistics-scheduler-kafka:$IMAGE_VERSION
