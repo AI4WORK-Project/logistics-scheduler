@@ -49,6 +49,10 @@ def validation_error(detail: Any) -> ScheduleResult:
     return ScheduleResult(422, {"message": "Validation error", "detail": detail})
 
 
+def internal_error(error: Exception) -> ScheduleResult:
+    return ScheduleResult(500, {"message": str(error), "detail": {}})
+
+
 def load_instance(data: Any) -> LogisticsInstance:
     """Validate the JSON data of an instance as the body of /schedule.
 
@@ -71,7 +75,7 @@ def solve(instance: LogisticsInstance, time_limit: int | None) -> ScheduleResult
 
     except Exception as e:  # noqa: BLE001
         logger.exception("Error while computing the schedule")
-        return ScheduleResult(500, {"message": str(e), "detail": {}})
+        return internal_error(e)
 
     if solution is None:
         logger.error(NO_SOLUTION_MESSAGE)

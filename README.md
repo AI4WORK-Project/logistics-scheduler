@@ -85,7 +85,7 @@ The page is rendered when it is first requested, so computing a schedule does no
 ### GET `/health`
 
 Returns `{"status": "healthy", "version": "<version>"}` if the service is up and reachable.
-When the Kafka consumer is enabled, the response also contains `"kafka": "running"`, and the status is 503 with `{"status": "unhealthy", "kafka": "stopped", ...}` if the consumer has stopped.
+When the Kafka consumer is enabled, the response also contains `"kafka": "running"`; the status is 503, with `"status": "unhealthy"`, while the consumer is trying to reach the broker (`"kafka": "connecting"`) or if it has stopped (`"kafka": "stopped"`).
 The Docker image uses it as its `HEALTHCHECK`.
 
 ## Kafka
@@ -120,6 +120,9 @@ Every other request gets a reply on its `ReplyTopic`, with the `CorrelationId` o
 - **400**, **422**, **500**: the body is the error, as returned by `/schedule`: `{"message": "...", "detail": ...}`. An invalid `TimeLimit` header gives 422 with the detail `{"headers": {"TimeLimit": [...]}}`.
 
 The requests are processed one at a time, by the consumer group `logistics-scheduler`, and each request is committed once its reply has been sent: a request in progress when the scheduler stops is processed again when it restarts.
+A reply that fails for a temporary error, e.g. because the broker is not reachable, is sent again; a reply that cannot be delivered at all, e.g. because the scheduler is not allowed to write to its reply topic, is logged and given up.
+If the broker cannot be reached, e.g. because it starts together with the scheduler, the consumer keeps trying to connect.
+If the consumer stops for any other reason, the process exits with code 1, so that the container can be restarted by its restart policy (e.g. `docker run --restart unless-stopped`).
 The consumer creates the request topic if the broker allows it, and logs `Waiting...` when it is idle, after starting or after a request.
 
 `python kafka_client.py` starts the server with the consumer and fails if `KAFKA_BOOTSTRAP_SERVER` is not set.
