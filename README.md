@@ -125,9 +125,6 @@ If the broker cannot be reached, e.g. because it starts together with the schedu
 If the consumer stops for any other reason, the process exits with code 1, so that the container can be restarted by its restart policy (e.g. `docker run --restart unless-stopped`).
 The consumer creates the request topic if the broker allows it, and logs `Waiting...` when it is idle, after starting or after a request.
 
-`python kafka_client.py` starts the server with the consumer and fails if `KAFKA_BOOTSTRAP_SERVER` is not set.
-It is kept, together with the image name `ghcr.io/ai4work-project/logistics-scheduler-kafka`, for the deployments of [Pilot-Logistics](https://github.com/AI4WORK-Project/Pilot-Logistics), which wait for the broker with `nc` (installed in the image) and then run it.
-
 ## Examples
 
 With the server running:
@@ -158,7 +155,7 @@ python -m pytest tests
 The API tests start the server on port 5000 themselves, so the port must be free.
 The Kafka tests start a Kafka broker with [Testcontainers](https://testcontainers.com/), so they need Docker.
 
-The CI runs the tests on every pull request. Every push to `main` publishes the Docker image `ghcr.io/ai4work-project/logistics-scheduler:latest`, and every tag `vX.Y.Z` publishes `ghcr.io/ai4work-project/logistics-scheduler:X.Y.Z`. The same image is also published as `ghcr.io/ai4work-project/logistics-scheduler-kafka`.
+The CI runs the tests on every pull request. Every push to `main` publishes the Docker image `ghcr.io/ai4work-project/logistics-scheduler:latest`, and every tag `vX.Y.Z` publishes `ghcr.io/ai4work-project/logistics-scheduler:X.Y.Z`.
 
 ## License
 
