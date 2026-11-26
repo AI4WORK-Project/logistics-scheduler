@@ -1,21 +1,24 @@
 import json
 import logging
+import os
+import signal
+import sys
 import threading
 from importlib.metadata import PackageNotFoundError, version
 
-import marshmallow
 from apiflask import APIFlask, HTTPError, Schema
 from apiflask.fields import String
 from flask import Response
 from flask_cors import CORS
-from marshmallow_dataclass import class_schema
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
-from logistics.factory import LogisticsSchedulingFactory
+import kafka_worker
+import service
 from logistics.instance import LogisticsInstance
-from logistics.solution import LogisticsSolution, TruckScheduleSolution
+from logistics.solution import TruckScheduleSolution
 from logistics.visualize import solution_html
+from service import LogisticsInstanceSchema, LogisticsSolutionSchema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,15 +42,6 @@ CORS(app)
 
 class QueryParamsSchema(BaseModel):
     time_limit: int = Field(gt=0)
-
-
-# generate the schema classes
-LogisticsInstanceSchema: marshmallow.schema.SchemaMeta = class_schema(
-    LogisticsInstance, base_schema=Schema
-)
-LogisticsSolutionSchema: marshmallow.schema.SchemaMeta = class_schema(
-    LogisticsSolution, base_schema=Schema
-)
 
 
 class LastScheduleGantt:
@@ -82,17 +76,45 @@ def render_schedule(truck_schedule_solution: TruckScheduleSolution) -> str:
 last_schedule_gantt_html = LastScheduleGantt(render_schedule)
 
 
+# Kafka consumer and its thread, if it has been started
+kafka_consumer: kafka_worker.KafkaWorker | None = None
+kafka_thread: threading.Thread | None = None
+
+# called with the exit code when the Kafka consumer stops on its own (replaced
+# in the tests)
+exit_process = os._exit
+
+
 class HealthSchema(Schema):
     status = String(metadata={"example": "healthy"})
     version = String(metadata={"example": __version__})
+    kafka = String(
+        metadata={
+            "example": "running",
+            "description": "running, connecting or stopped, only if the Kafka consumer "
+            "is enabled",
+        }
+    )
 
 
 @app.get("/health")
 @app.output(HealthSchema)
-@app.doc(summary="Check if the service is alive and reachable")
+@app.doc(
+    summary="Check if the service is alive and reachable",
+    responses={503: "The Kafka consumer is not connected to the broker or has stopped"},
+)
 def health_check():
     logger.debug("Health check pinged.")
-    return {"status": "healthy", "version": __version__}
+    body = {"status": "healthy", "version": __version__}
+    if kafka_thread is not None:
+        if not kafka_thread.is_alive():
+            body.update(status="unhealthy", kafka="stopped")
+            return body, 503
+        if kafka_consumer is None or not kafka_consumer.connected.is_set():
+            body.update(status="unhealthy", kafka="connecting")
+            return body, 503
+        body["kafka"] = "running"
+    return body
 
 
 @app.errorhandler(AssertionError)
@@ -129,32 +151,17 @@ def bad_request(error: BadRequest):
         500: "Internal server error",
     },
 )
-def schedule(query_data, json_data):
-    try:
-        time_limit = query_data.time_limit
-        logger.info(f"Time limit: {time_limit}")
+def schedule(query_data, json_data: LogisticsInstance):
+    time_limit = query_data.time_limit
+    logger.info(f"Time limit: {time_limit}")
 
-        instance: LogisticsInstance = LogisticsInstance.from_dict(json_data)
-        logger.info("LogisticsInstance created")
+    # the body has already been validated against LogisticsInstanceSchema
+    result = service.solve(json_data, time_limit)
+    if result.status != 200:
+        raise HTTPError(status_code=result.status, message=result.body["message"])
 
-        factory = LogisticsSchedulingFactory(instance)
-        logger.info("LogisticsSchedulingFactory created")
-
-        solution: LogisticsSolution | None = factory.get_solution(time_limit=time_limit)
-
-    except Exception as e:  # noqa: BLE001
-        message = str(e)
-        logger.error(message)
-        raise HTTPError(status_code=500, message=message)
-
-    if solution is None:
-        message = "No solution has been found for the given problem"
-        logger.error(message)
-        raise HTTPError(status_code=400, message=message)
-
-    logger.info("Solution found")
-    last_schedule_gantt_html.update(factory.truck_schedule_solution)
-    return solution.to_dict(), 200
+    last_schedule_gantt_html.update(result.truck_schedule_solution)
+    return result.body, 200
 
 
 @app.get("/last_schedule_gantt")
@@ -162,7 +169,7 @@ def schedule(query_data, json_data):
     summary="Visualize the last computed schedule",
     description="HTML chart of the orders scheduled at each exchange point over "
     "time, with their material and truck, in the last schedule computed by "
-    "/schedule.",
+    "/schedule or for a Kafka request.",
     responses={
         200: {"description": "HTML visualization", "content": {"text/html": {}}},
         404: "No schedule has been computed yet",
@@ -181,11 +188,53 @@ def last_schedule_gantt():
     return Response(html, mimetype="text/html")
 
 
-def start():
+def start_kafka_worker(config: kafka_worker.KafkaConfig) -> kafka_worker.KafkaWorker:
+    """Start the Kafka consumer in a thread: the schedules it computes are
+    shown by /last_schedule_gantt too.
+
+    If the consumer stops on its own, the process exits, so that the container
+    can be restarted: the Kafka requests would not be served otherwise."""
+    global kafka_consumer, kafka_thread
+    worker = kafka_worker.KafkaWorker(config, on_schedule=last_schedule_gantt_html.update)
+
+    def run():
+        try:
+            worker.run()
+        except Exception:
+            logger.exception("The Kafka consumer has failed")
+        if not worker.stopping:
+            logger.critical("The Kafka consumer has stopped: exiting")
+            exit_process(1)
+
+    kafka_consumer = worker
+    kafka_thread = threading.Thread(target=run, name="kafka-worker", daemon=True)
+    kafka_thread.start()
+    return worker
+
+
+def start(kafka_required: bool = False):
+    """Start the server, and the Kafka consumer if KAFKA_BOOTSTRAP_SERVER is set.
+
+    Raise ValueError if the Kafka configuration is not valid, or if it is
+    missing and kafka_required is set."""
     logger.info("Starting...")
     from waitress import serve
 
-    serve(app, host="0.0.0.0", port=5000)
+    config = kafka_worker.KafkaConfig.from_env()
+    if config is None and kafka_required:
+        raise ValueError("KAFKA_BOOTSTRAP_SERVER is required.")
+    worker = start_kafka_worker(config) if config is not None else None
+
+    if threading.current_thread() is threading.main_thread():
+        # stop as on Ctrl+C, so that the Kafka consumer leaves its group
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
+    try:
+        serve(app, host="0.0.0.0", port=5000)
+    finally:
+        if worker is not None and kafka_thread is not None:
+            logger.info("Stopping the Kafka consumer...")
+            worker.stop()
+            kafka_thread.join(10)
 
 
 if __name__ == "__main__":
